@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id             String         @id @default(cuid())
+  name           String?
+  email          String         @unique
+  hashedPassword String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  backtests      Backtest[]
+  sessions       Session[]
+  tradeJournals  TradeJournal[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Backtest {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate       String
+  endDate         String
+  frequency       String
+  amount          Float
+  smartDCA        Boolean  @default(false)
+  fearThreshold   Int      @default(25)
+  greedThreshold  Int      @default(75)
+  fearMultiplier  Float    @default(2.0)
+  greedMultiplier Float    @default(0.5)
+  resultJSON      String
+  createdAt       DateTime @default(now())
+}
+
+model TradeJournal {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action        String // "BUY", "SELL", or "HOLD"
+  amount        Float? // Optional amount of BTC
+  price         Float? // Optional price of BTC at the time
+  fgi           Int? // Fear and Greed Index at the time
+  notes         String // User's reasoning or emotional state
+  auditScore    Int? // 1-100 Stoic discipline score given by AI
+  auditFeedback String? // AI's Stoic reflection/feedback
+  createdAt     DateTime @default(now())
+}

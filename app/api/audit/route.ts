@@ -62,7 +62,7 @@ export async function POST(req: Request) {
         // Save to Database
         const entry = await prisma.tradeJournal.create({
             data: {
-                userId: session.user.id,
+                userId: session.user.id as string,
                 action,
                 amount: amount ? Number(amount) : null,
                 price: price ? Number(price) : null,

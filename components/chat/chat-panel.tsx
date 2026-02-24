@@ -39,7 +39,7 @@ export default function ChatPanel() {
     return (
         <div
             className="card"
-            style={{ display: "flex", flexDirection: "column", height: 560 }}
+            style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 560 }}
         >
             <h3
                 style={{

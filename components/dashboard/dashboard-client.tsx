@@ -147,55 +147,60 @@ export default function DashboardClient() {
 
             {/* Main Content */}
             <main style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 32px" }}>
-                {/* Market Overview */}
+                {/* Top Section: High Frequency Trading Tools (Chat & Diary) */}
                 <div
                     style={{
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
                         gap: 16,
                         marginBottom: 24,
+                        alignItems: "stretch",
                     }}
                 >
-                    <PriceCard />
-                    <FGICard />
-                </div>
-
-                {/* AI Strategy Advisor + Ahr999 */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 16,
-                        marginBottom: 24,
-                    }}
-                >
-                    <StrategyAdvisor />
-                    <Ahr999Card />
-                </div>
-
-                {/* On-chain Data */}
-                <div style={{ marginBottom: 24 }}>
-                    <OnchainCard />
-                </div>
-
-                {/* Stoic Historical Backtest & Trading Diary */}
-                <div
-                    style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 16,
-                        marginBottom: 24,
-                    }}
-                >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-                        <StoicCard />
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        <ChatPanel />
                     </div>
-                    <div>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                         <TradingDiary />
                     </div>
                 </div>
 
-                {/* Backtest + Chat */}
+                {/* Secondary Section: Key Stats & Advisor */}
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 16,
+                        marginBottom: 24,
+                    }}
+                >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                            <PriceCard />
+                            <FGICard />
+                        </div>
+                        <StrategyAdvisor />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <Ahr999Card />
+                        <OnchainCard />
+                    </div>
+                </div>
+
+                {/* Tertiary Indicators */}
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 16,
+                        marginBottom: 24,
+                    }}
+                >
+                    <StoicCard />
+                    <div></div>
+                </div>
+
+                {/* Backtest Section */}
                 <div
                     style={{
                         display: "grid",
@@ -205,7 +210,7 @@ export default function DashboardClient() {
                     }}
                 >
                     <BacktestForm onSubmit={handleBacktest} loading={loading} />
-                    <ChatPanel />
+                    <div></div>
                 </div>
 
                 {/* Results */}

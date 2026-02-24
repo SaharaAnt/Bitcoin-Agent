@@ -93,7 +93,7 @@ export default function TradingDiary() {
     };
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%" }}>
             {/* Input Form */}
             <div className="card" style={{ padding: 20 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>

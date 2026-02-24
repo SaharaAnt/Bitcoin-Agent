@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateObject } from "ai";
+import { generateText } from "ai";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -49,15 +49,27 @@ export async function POST(req: Request) {
 请给出你的斯多葛审计分数和反馈。
 `;
 
-        const { object } = await generateObject({
+        const { text } = await generateText({
             model: deepseek.chat("deepseek-chat"),
             system: AUDIT_SYSTEM_PROMPT,
-            prompt: userPrompt,
-            schema: z.object({
-                score: z.number().min(1).max(100).describe("1-100的纪律得分"),
-                feedback: z.string().describe("用斯多葛口吻给出的100-200字的反思反馈"),
-            }),
+            prompt: userPrompt + "\n\n请严格返回以下格式的 JSON 字符串（不要包含额外的文字，用 ```json  ``` 括起来）：\n{\n  \"score\": 85,\n  \"feedback\": \"你的反馈内容\"\n}",
         });
+
+        // 尝试解析 JSON
+        let auditResult = { score: 50, feedback: "Agent 暂时无法提供详细的斯多葛审计，但请继续保持纪律。" };
+        try {
+            const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
+            const jsonStr = jsonMatch ? jsonMatch[1] : text.trim();
+            const parsed = JSON.parse(jsonStr);
+            if (parsed.score && parsed.feedback) {
+                auditResult = {
+                    score: Number(parsed.score),
+                    feedback: String(parsed.feedback)
+                };
+            }
+        } catch (e) {
+            console.error("[audit] Failed to parse JSON from LLM:", text, e);
+        }
 
         // Save to Database
         const entry = await prisma.tradeJournal.create({
@@ -68,8 +80,8 @@ export async function POST(req: Request) {
                 price: price ? Number(price) : null,
                 fgi: fgi ? Number(fgi) : null,
                 notes,
-                auditScore: object.score,
-                auditFeedback: object.feedback,
+                auditScore: auditResult.score,
+                auditFeedback: auditResult.feedback,
             },
         });
 

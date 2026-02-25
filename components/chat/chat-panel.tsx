@@ -2,7 +2,49 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useState, useRef, useEffect, FormEvent } from "react";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { Send, Bot, User, Sparkles, Wrench, CheckCircle, Loader } from "lucide-react";
+
+// Tool name → 中文标签 + emoji
+const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
+    getFearGreedIndex: { label: "恐惧贪婪指数", icon: "📊" },
+    getAhr999: { label: "Ahr999 估值", icon: "📐" },
+    analyzeMarket: { label: "市场综合分析", icon: "🧠" },
+    getBtcPrice: { label: "BTC 实时价格", icon: "₿" },
+    getOnchainData: { label: "链上数据", icon: "⛓️" },
+    runDCABacktest: { label: "DCA 回测", icon: "📈" },
+    runSmartDCABacktest: { label: "智能 DCA 回测", icon: "🤖" },
+    compareStrategies: { label: "策略对比", icon: "⚖️" },
+};
+
+function ToolCallBadge({ toolName, state }: { toolName: string; state: "call" | "result" }) {
+    const info = TOOL_LABELS[toolName] ?? { label: toolName, icon: "🔧" };
+    return (
+        <div
+            style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 10px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 500,
+                background: state === "result"
+                    ? "rgba(34, 197, 94, 0.1)"
+                    : "rgba(251, 146, 60, 0.1)",
+                border: `1px solid ${state === "result" ? "rgba(34, 197, 94, 0.3)" : "rgba(251, 146, 60, 0.3)"}`,
+                color: state === "result" ? "#22c55e" : "#fb923c",
+            }}
+        >
+            <span>{info.icon}</span>
+            <span>{info.label}</span>
+            {state === "result" ? (
+                <CheckCircle size={11} />
+            ) : (
+                <Loader size={11} style={{ animation: "spin 1s linear infinite" }} />
+            )}
+        </div>
+    );
+}
 
 export default function ChatPanel() {
     const { messages, sendMessage, status, error } = useChat({
@@ -27,7 +69,14 @@ export default function ChatPanel() {
         setInput("");
     };
 
-    // Extract text content from message parts
+    // 提取消息中所有 tool-invocation parts（已调用 + 已返回结果）
+    const getToolParts = (msg: (typeof messages)[number]) => {
+        if (!msg.parts) return [];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (msg.parts as any[]).filter((p: any) => p.type === "tool-invocation");
+    };
+
+    // 提取文本
     const getMessageText = (msg: (typeof messages)[number]) => {
         if (!msg.parts) return "";
         return msg.parts
@@ -53,6 +102,20 @@ export default function ChatPanel() {
             >
                 <Sparkles size={18} color="var(--btc-orange)" />
                 AI 定投顾问
+                <span
+                    style={{
+                        marginLeft: "auto",
+                        fontSize: 11,
+                        fontWeight: 400,
+                        color: "var(--text-muted)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                    }}
+                >
+                    <Wrench size={11} />
+                    8 工具可用
+                </span>
             </h3>
 
             {/* Messages */}
@@ -94,9 +157,9 @@ export default function ChatPanel() {
                             }}
                         >
                             {[
+                                "现在能买吗？帮我分析一下",
                                 "帮我对比 2020-2024 每周定投 $100 的收益",
-                                "现在的恐惧贪婪指数是多少？",
-                                "智能 DCA 和普通 DCA 哪个好？",
+                                "市场链上数据怎么样？",
                             ].map((suggestion) => (
                                 <button
                                     key={suggestion}
@@ -126,68 +189,97 @@ export default function ChatPanel() {
                     </div>
                 )}
 
-                {messages.map((msg) => (
-                    <div
-                        key={msg.id}
-                        style={{
-                            display: "flex",
-                            gap: 10,
-                            flexDirection: msg.role === "user" ? "row-reverse" : "row",
-                            alignItems: "flex-start",
-                        }}
-                    >
-                        <div
-                            style={{
-                                width: 28,
-                                height: 28,
-                                borderRadius: 8,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                                background:
-                                    msg.role === "user"
-                                        ? "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))"
-                                        : "var(--bg-secondary)",
-                                border:
-                                    msg.role === "assistant"
-                                        ? "1px solid var(--border-color)"
-                                        : "none",
-                            }}
-                        >
-                            {msg.role === "user" ? (
-                                <User size={14} color="white" />
-                            ) : (
-                                <Bot size={14} color="var(--btc-orange)" />
+                {messages.map((msg) => {
+                    const toolParts = getToolParts(msg);
+                    const text = getMessageText(msg);
+
+                    return (
+                        <div key={msg.id} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {/* Tool Call Badges（只在 assistant 消息中显示）*/}
+                            {msg.role === "assistant" && toolParts.length > 0 && (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        flexWrap: "wrap",
+                                        gap: 6,
+                                        paddingLeft: 38,
+                                    }}
+                                >
+                                    {toolParts.map((part, i) => (
+                                        <ToolCallBadge
+                                            key={i}
+                                            toolName={part.toolInvocation.toolName}
+                                            state={part.toolInvocation.state === "result" ? "result" : "call"}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* 消息气泡（只有有文本时才渲染）*/}
+                            {text && (
+                                <div
+                                    style={{
+                                        display: "flex",
+                                        gap: 10,
+                                        flexDirection: msg.role === "user" ? "row-reverse" : "row",
+                                        alignItems: "flex-start",
+                                    }}
+                                >
+                                    <div
+                                        style={{
+                                            width: 28,
+                                            height: 28,
+                                            borderRadius: 8,
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                            flexShrink: 0,
+                                            background:
+                                                msg.role === "user"
+                                                    ? "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))"
+                                                    : "var(--bg-secondary)",
+                                            border:
+                                                msg.role === "assistant"
+                                                    ? "1px solid var(--border-color)"
+                                                    : "none",
+                                        }}
+                                    >
+                                        {msg.role === "user" ? (
+                                            <User size={14} color="white" />
+                                        ) : (
+                                            <Bot size={14} color="var(--btc-orange)" />
+                                        )}
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            maxWidth: "80%",
+                                            padding: "10px 14px",
+                                            borderRadius: 14,
+                                            fontSize: 14,
+                                            lineHeight: 1.7,
+                                            whiteSpace: "pre-wrap",
+                                            background:
+                                                msg.role === "user"
+                                                    ? "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))"
+                                                    : "var(--bg-secondary)",
+                                            color:
+                                                msg.role === "user" ? "white" : "var(--text-primary)",
+                                            border:
+                                                msg.role === "assistant"
+                                                    ? "1px solid var(--border-color)"
+                                                    : "none",
+                                            borderBottomRightRadius: msg.role === "user" ? 4 : 14,
+                                            borderBottomLeftRadius: msg.role === "assistant" ? 4 : 14,
+                                        }}
+                                    >
+                                        {text}
+                                    </div>
+                                </div>
                             )}
                         </div>
-
-                        <div
-                            style={{
-                                maxWidth: "80%",
-                                padding: "10px 14px",
-                                borderRadius: 14,
-                                fontSize: 14,
-                                lineHeight: 1.7,
-                                whiteSpace: "pre-wrap",
-                                background:
-                                    msg.role === "user"
-                                        ? "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))"
-                                        : "var(--bg-secondary)",
-                                color:
-                                    msg.role === "user" ? "white" : "var(--text-primary)",
-                                border:
-                                    msg.role === "assistant"
-                                        ? "1px solid var(--border-color)"
-                                        : "none",
-                                borderBottomRightRadius: msg.role === "user" ? 4 : 14,
-                                borderBottomLeftRadius: msg.role === "assistant" ? 4 : 14,
-                            }}
-                        >
-                            {getMessageText(msg)}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
 
                 {isLoading && (
                     <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -260,6 +352,13 @@ export default function ChatPanel() {
                     <Send size={16} />
                 </button>
             </form>
+
+            <style>{`
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 }

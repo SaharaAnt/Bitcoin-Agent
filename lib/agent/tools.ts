@@ -5,6 +5,8 @@ import { getBtcCurrentPrice } from "../api/coingecko";
 import { getFearGreedCurrent } from "../api/fear-greed";
 import { analyzeMarketConditions } from "../engine/strategy-advisor";
 import { calculateAhr999 } from "../engine/ahr999";
+import { getNetworkCongestionStatus } from "../api/mempool";
+import { getMockedLiquidations } from "../api/liquidations";
 import type { Frequency } from "../engine/types";
 
 export const agentTools = {
@@ -226,6 +228,38 @@ export const agentTools = {
                         : data.zone === "dca"
                             ? "Ahr999 在 0.45~1.2 之间，处于定投区间，适合正常坚持定投"
                             : "Ahr999 高于 1.2，处于等待区间，建议减少定投或等待回调",
+            };
+        },
+    }),
+
+    getOnchainData: tool({
+        description:
+            "获取链上实时数据：比特币网络拥堵状态（mempool手续费）和全网期货爆仓情况。用于判断市场恐慌/狂热程度及链上流动性。",
+        inputSchema: z.object({}),
+        execute: async () => {
+            const [btc, fgi] = await Promise.all([
+                getBtcCurrentPrice(),
+                getFearGreedCurrent(),
+            ]);
+            const [mempool, liquidations] = await Promise.all([
+                getNetworkCongestionStatus(),
+                getMockedLiquidations(fgi.value, btc.change24h),
+            ]);
+            return {
+                network: {
+                    isCongested: mempool.isCongested,
+                    fastestFee: `${mempool.fees.fastestFee} sat/vB`,
+                    economyFee: `${mempool.fees.economyFee} sat/vB`,
+                    status: mempool.isCongested ? "拥堵" : "畅通",
+                    note: mempool.reasoning,
+                },
+                liquidations: {
+                    total: `${liquidations.totalLiquidationsUSD} 亿美元`,
+                    longs: `${liquidations.longLiquidationsUSD} 亿美元`,
+                    shorts: `${liquidations.shortLiquidationsUSD} 亿美元`,
+                    dominantSide: liquidations.dominantSide,
+                    analysis: liquidations.reasoning,
+                },
             };
         },
     }),

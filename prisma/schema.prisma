@@ -56,3 +56,12 @@ model TradeJournal {
   auditFeedback String? // AI's Stoic reflection/feedback
   createdAt     DateTime @default(now())
 }
+
+model DailyBriefing {
+  id        String   @id @default(cuid())
+  fgi       Int      // Fear and Greed Index at the time
+  price     Float    // BTC Price at the time
+  content   String   @db.Text // AI generated Stoic analysis (Markdown)
+  isExtreme Boolean  // Was this flagged as an extreme market condition?
+  createdAt DateTime @default(now())
+}

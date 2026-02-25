@@ -3,6 +3,8 @@
 import { useChat } from "@ai-sdk/react";
 import { useState, useRef, useEffect, FormEvent } from "react";
 import { Send, Bot, User, Sparkles, Wrench, CheckCircle, Loader } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 // Tool name → 中文标签 + emoji
 const TOOL_LABELS: Record<string, { label: string; icon: string }> = {
@@ -258,7 +260,6 @@ export default function ChatPanel() {
                                             borderRadius: 14,
                                             fontSize: 14,
                                             lineHeight: 1.7,
-                                            whiteSpace: "pre-wrap",
                                             background:
                                                 msg.role === "user"
                                                     ? "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))"
@@ -272,8 +273,15 @@ export default function ChatPanel() {
                                             borderBottomRightRadius: msg.role === "user" ? 4 : 14,
                                             borderBottomLeftRadius: msg.role === "assistant" ? 4 : 14,
                                         }}
+                                        className={msg.role === "assistant" ? "markdown-body" : ""}
                                     >
-                                        {text}
+                                        {msg.role === "user" ? (
+                                            <div style={{ whiteSpace: "pre-wrap" }}>{text}</div>
+                                        ) : (
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {text}
+                                            </ReactMarkdown>
+                                        )}
                                     </div>
                                 </div>
                             )}

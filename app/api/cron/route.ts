@@ -72,16 +72,20 @@ export async function GET(req: Request) {
             },
         });
 
-        // 6. Send Email if Extreme Market Conditions
+        // 6. Send Email Always
         let emailSent = false;
-        if (isExtreme) {
-            console.log(`[cron] Extreme conditions detected (FGI: ${fgi.value}, 24h: ${btc.change24h}%). Sending alert email...`);
-            const subject = `[Stoic Agent] 市场异动警报: ${btc.change24h > 0 ? '狂热' : '恐慌'} (比特币 $${btc.price.toLocaleString()})`;
-            const htmlContent = simpleMarkdownToHtml(content);
+        console.log(`[cron] Generating email subject for daily briefing...`);
+        let subjectKey = "平稳";
+        if (fgi.value <= 25) subjectKey = "极度恐慌";
+        else if (fgi.value <= 45) subjectKey = "恐慌";
+        else if (fgi.value >= 75) subjectKey = "极度贪婪";
+        else if (fgi.value >= 55) subjectKey = "贪婪";
 
-            const emailRes = await sendAlertEmail({ subject, html: htmlContent });
-            emailSent = emailRes.success;
-        }
+        const subject = `[Stoic Agent] 每日行情简报: ${subjectKey} (BTC $${btc.price.toLocaleString()})`;
+        const htmlContent = simpleMarkdownToHtml(content);
+
+        const emailRes = await sendAlertEmail({ subject, html: htmlContent });
+        emailSent = emailRes.success;
 
         return NextResponse.json({
             success: true,

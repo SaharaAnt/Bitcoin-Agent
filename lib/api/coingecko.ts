@@ -16,6 +16,7 @@ async function fetchWithCache<T>(url: string, ttlMs = 60_000): Promise<T> {
 
     const headers: Record<string, string> = {
         accept: "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     };
 
     const apiKey = process.env.COINGECKO_API_KEY;
@@ -129,22 +130,33 @@ export async function getBtcCommunityData(): Promise<{
     redditActiveAccounts: number;
     redditAveragePosts48h: number;
     redditAverageComments48h: number;
-}> {
-    const url = `${COINGECKO_BASE}/coins/bitcoin?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false`;
+} | null> {
+    try {
+        const url = `${COINGECKO_BASE}/coins/bitcoin?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false`;
 
-    const data = await fetchWithCache<{
-        community_data: {
-            reddit_subscribers: number;
-            reddit_accounts_active_48h: number;
-            reddit_average_posts_48h: number;
-            reddit_average_comments_48h: number;
+        const data = await fetchWithCache<any>(url, 300_000); // 缓存 5 分钟
+
+        if (!data || !data.community_data) {
+            console.warn("[coingecko] Missing community_data in response");
+            return null;
+        }
+
+        const cd = data.community_data;
+
+        // Defensive check: if reddit_subscribers is missing or 0, it might be an API restriction
+        if (!cd.reddit_subscribers) {
+            console.warn("[coingecko] Reddit data is empty or missing:", cd);
+            return null;
+        }
+
+        return {
+            redditSubscribers: cd.reddit_subscribers || 0,
+            redditActiveAccounts: cd.reddit_accounts_active_48h || 0,
+            redditAveragePosts48h: cd.reddit_average_posts_48h || 0,
+            redditAverageComments48h: cd.reddit_average_comments_48h || 0,
         };
-    }>(url, 300_000); // 缓存 5 分钟
-
-    return {
-        redditSubscribers: data.community_data.reddit_subscribers,
-        redditActiveAccounts: data.community_data.reddit_accounts_active_48h,
-        redditAveragePosts48h: data.community_data.reddit_average_posts_48h,
-        redditAverageComments48h: data.community_data.reddit_average_comments_48h,
-    };
+    } catch (err) {
+        console.error("[coingecko] Failed to fetch community data:", err);
+        return null;
+    }
 }

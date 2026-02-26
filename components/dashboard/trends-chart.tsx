@@ -116,7 +116,7 @@ export default function TrendsChart({ data, reddit }: TrendsChartProps) {
                     综合 Bitcoin, Buy Bitcoin 等关键词，反映大众入场意愿。
                 </div>
 
-                {reddit && (
+                {reddit ? (
                     <div style={{
                         display: "grid",
                         gridTemplateColumns: "1fr 1fr",
@@ -131,8 +131,20 @@ export default function TrendsChart({ data, reddit }: TrendsChartProps) {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <MessageSquare size={12} color="var(--text-muted)" />
-                            <span>48h 活跃发帖: <b style={{ color: "var(--text-primary)" }}>{reddit.postActivity.toFixed(1)}/day</b></span>
+                            <span>活跃度: <b style={{ color: "var(--text-primary)" }}>{reddit.postActivity.toFixed(1)}/day</b></span>
                         </div>
+                    </div>
+                ) : (
+                    <div style={{
+                        fontSize: 10,
+                        color: "var(--text-muted)",
+                        marginTop: 8,
+                        paddingTop: 8,
+                        borderTop: "1px solid rgba(255,255,255,0.05)",
+                        fontStyle: "italic",
+                        textAlign: "center"
+                    }}>
+                        Reddit 深度数据暂时无法获取 (API 限制)
                     </div>
                 )}
             </div>

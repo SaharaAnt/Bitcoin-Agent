@@ -21,9 +21,15 @@ export async function sendAlertEmail({
             console.warn('[email] ALERT_EMAIL not set. Sending to test@example.com');
         }
 
+        let alertEmails = [ALERT_EMAIL];
+        // 自动兼容换行符、逗号或分号分隔的多个邮箱
+        if (typeof ALERT_EMAIL === 'string') {
+            alertEmails = ALERT_EMAIL.split(/[\n,;]+/).map(e => e.trim()).filter(Boolean);
+        }
+
         const data = await resend.emails.send({
             from: FROM_EMAIL,
-            to: [ALERT_EMAIL],
+            to: alertEmails,
             subject: subject,
             html: html,
         });

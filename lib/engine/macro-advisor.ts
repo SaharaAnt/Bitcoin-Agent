@@ -1,5 +1,7 @@
 import yahooFinance from "yahoo-finance2";
 
+
+
 export type MacroSignal = "easing" | "tightening" | "neutral";
 
 export interface MacroAnalysis {

@@ -5,6 +5,8 @@ import { getBtcCurrentPrice } from "@/lib/api/coingecko";
 import { getFearGreedCurrent } from "@/lib/api/fear-greed";
 import { getNetworkCongestionStatus } from "@/lib/api/mempool";
 import { getMockedLiquidations } from "@/lib/api/liquidations";
+import { analyzeMarketConditions } from "@/lib/engine/strategy-advisor";
+import { calculateAhr999 } from "@/lib/engine/ahr999";
 import { prisma } from "@/lib/prisma";
 import { sendAlertEmail, simpleMarkdownToHtml } from "@/lib/api/email";
 
@@ -28,10 +30,12 @@ export async function GET(req: Request) {
         console.log("[cron] Starting daily market briefing generation...");
 
         // 2. Fetch all real-time data
-        const [btc, fgi, mempool] = await Promise.all([
+        const [btc, fgi, mempool, strategy, ahr] = await Promise.all([
             getBtcCurrentPrice(),
             getFearGreedCurrent(),
             getNetworkCongestionStatus(),
+            analyzeMarketConditions(),
+            calculateAhr999()
         ]);
         const liquidations = await getMockedLiquidations(fgi.value, btc.change24h);
 
@@ -46,15 +50,17 @@ export async function GET(req: Request) {
 【当前数据】
 - BTC 价格: $${btc.price.toLocaleString()} (24h变动: ${btc.change24h.toFixed(2)}%)
 - 恐慌贪婪指数 (FGI): ${fgi.value} (${fgi.label})
+- Ahr999 指数: ${ahr.value.toFixed(3)} (${ahr.zoneLabel}，200日均线: $${ahr.ma200.toLocaleString()})
+- 模型策略建议: ${strategy.signalLabel} (依据: ${strategy.suggestion.reasoning.join('; ')})
 - 全网期货爆仓: 过去24小时爆仓 ${liquidations.totalLiquidationsUSD} 亿美元（主要爆仓方: ${liquidations.dominantSide}。${liquidations.reasoning}）
 - 网络拥堵状况: ${mempool.isCongested ? "极度拥堵" : "畅通"} (${mempool.reasoning})
 
 【要求】
 1. 使用 Markdown 格式渲染（可以使用一到两个带 emoji 的标题）。
-2. 开头简述市场现状。
-3. 结尾务必结合“斯多葛哲学”（如：区分可控与不可控，视波动为试炼）给予定投执行者精神反馈。
-4. 如果当前处于极度恐慌或大幅下跌（极端情况），强调这是历史性的捡筹码机会；如果是极度贪婪，提醒不要FOMO追高。
-5. 保持沉稳、克制，不要喊单。格式清晰易读。
+2. 开头一段简述市场现状。
+3. 紧接着结合 Ahr999 与模型策略，给出直接客观的纪律要求执行点（定投、减仓或抄底）。
+4. 结尾务必结合“斯多葛哲学”（如：区分可控与不可控，视波动为试炼）给予执行者精神反馈。
+5. 保持沉稳、克制。不要长篇大论，格式清晰易读。
 `;
 
         const { text: content } = await generateText({

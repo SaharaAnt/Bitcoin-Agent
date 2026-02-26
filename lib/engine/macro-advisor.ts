@@ -17,6 +17,10 @@ export interface MacroAnalysis {
         change: number;
         changePercent: number;
     };
+    impliedFedRate: {
+        value: number;
+        changeBps: number;
+    };
     reasoning: string[];
     timestamp: string;
 }
@@ -59,35 +63,60 @@ async function fetchQuoteWithTimeout(symbol: string, fallbackValue = 0, timeoutM
  * - US10Y (10年期美债收益率)：被视为无风险利率基准。下降表示借贷成本降低、降息预期增强，利好 BTC。
  */
 export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
-    // 并行获取美指和十年期美债
-    const [dxyData, us10yData] = await Promise.all([
+    // 并行获取美指、十年期美债和联邦基金利率期货数据
+    const [dxyData, us10yData, zqData] = await Promise.all([
         fetchQuoteWithTimeout("DX-Y.NYB", 104.0), // 美元指数
-        fetchQuoteWithTimeout("^TNX", 4.2)        // 10年期美债收益率 (CBOE Interest Rate 10 Year T No)
+        fetchQuoteWithTimeout("^TNX", 4.2),       // 10年期美债收益率
+        fetchQuoteWithTimeout("ZQ=F", 95.38)      // 30天联邦基金利率期货 (默认为 95.38 = 暗示 4.62% 利率)
     ]);
 
     const reasoning: string[] = [];
     let signal: MacroSignal = "neutral";
     let score = 0; // Negative = Easing (Bullish), Positive = Tightening (Bearish)
 
-    // 分析 10年期美债 (US10Y) 变化
-    // US10Y 降低代表市场押注美联储降息或宏观宽松
+    // 1. 分析 联邦基金利率期货 (ZQ=F) 变化 - 最直接的降息预期
+    // ZQ=F 价格上涨，意味着隐含利率 (100 - 价格) 下降，即市场计价更多降息
+    const currentImpliedRate = 100 - zqData.value;
+    const rateChangeBps = -zqData.change * 100; // 价格上涨(+)=利率下降(-)，转换为基点(bps)
+
+    if (zqData.value === 95.38 && zqData.changePercent === 0) {
+        reasoning.push("短期利率期货数据获取异常或持平，使用默认值估算");
+    } else {
+        if (rateChangeBps <= -5) {
+            score -= 3; // 降息预期是最强烈的看涨信号，权重最高
+            reasoning.push(`联邦基金利率期货暗示短期利率降至 ${currentImpliedRate.toFixed(2)}% (预期下调 ${Math.abs(rateChangeBps).toFixed(0)}个基点)，市场正迅速为美联储鸽派操作定价，强烈提振比特币宏观流动性预期。`);
+        } else if (rateChangeBps < -1) {
+            score -= 1;
+            reasoning.push(`联邦基金利率期货暗示短期利率轻微下探至 ${currentImpliedRate.toFixed(2)}%，短端资金面边际宽松。`);
+        } else if (rateChangeBps >= 5) {
+            score += 3; // 加息/推迟降息预期是最强烈的看跌信号
+            reasoning.push(`联邦基金利率期货暗示短期利率升至 ${currentImpliedRate.toFixed(2)}% (预期上调 ${rateChangeBps.toFixed(0)}个基点)，市场正收回降息预期，老钱抽水效应凸显，对比特币构成显著压制。`);
+        } else if (rateChangeBps > 1) {
+            score += 1;
+            reasoning.push(`联邦基金利率期货暗示短期利率小幅升至 ${currentImpliedRate.toFixed(2)}%，短端资金面边际收紧。`);
+        } else {
+            reasoning.push(`联邦基金利率期货暗示短期利率暂稳于 ${currentImpliedRate.toFixed(2)}%，市场对近期货币政策预期保持稳定。`);
+        }
+    }
+
+    // 2. 分析 10年期美债 (US10Y) 变化 - 无风险基准利率
     if (us10yData.value === 4.2 && us10yData.changePercent === 0) {
-        reasoning.push("美债收益率数据获取异常或持平使用默认值估算");
+        reasoning.push("美债收益率数据获取异常或持平，使用默认值估算");
     } else {
         if (us10yData.changePercent < -1.5) {
             score -= 2;
-            reasoning.push(`10年期美债收益率大幅回落至 ${us10yData.value.toFixed(2)}% (日内跌幅 ${Math.abs(us10yData.changePercent).toFixed(2)}%)，市场预期美联储降息的鸽派信号强烈，无风险资产吸引力下降`);
+            reasoning.push(`10年期美债收益率大幅回落至 ${us10yData.value.toFixed(2)}% (日内跌幅 ${Math.abs(us10yData.changePercent).toFixed(2)}%)，长端借贷成本实质性降低，无风险资产吸引力下降`);
         } else if (us10yData.changePercent < -0.5) {
             score -= 1;
-            reasoning.push(`10年期美债收益率小幅下行至 ${us10yData.value.toFixed(2)}%，资金借贷成本边际降低`);
+            reasoning.push(`10年期美债收益率小幅下行至 ${us10yData.value.toFixed(2)}%，中长期资金环境边际改善`);
         } else if (us10yData.changePercent > 1.5) {
             score += 2;
-            reasoning.push(`10年期美债收益率大幅飙升至 ${us10yData.value.toFixed(2)}% (日内涨幅 ${us10yData.changePercent.toFixed(2)}%)，市场担忧美联储因通胀粘性推迟降息 (Higher for Longer)，抽水效应显著`);
+            reasoning.push(`10年期美债收益率大幅飙升至 ${us10yData.value.toFixed(2)}% (日内涨幅 ${us10yData.changePercent.toFixed(2)}%)，长端收益率受通胀粘性影响走强，宏观抽水效应显著`);
         } else if (us10yData.changePercent > 0.5) {
             score += 1;
-            reasoning.push(`10年期美债收益率上行至 ${us10yData.value.toFixed(2)}%，宏观流动性呈边际收紧态势`);
+            reasoning.push(`10年期美债收益率上行至 ${us10yData.value.toFixed(2)}%，中长期借贷成本呈边际收紧态势`);
         } else {
-            reasoning.push(`10年期美债收益率暂稳于 ${us10yData.value.toFixed(2)}%，宏观利率环境观望情绪浓厚`);
+            reasoning.push(`10年期美债收益率稳于 ${us10yData.value.toFixed(2)}%，长端宏观利率观望情绪浓厚。`);
         }
     }
 
@@ -113,16 +142,16 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         }
     }
 
-    // 综合打分推导 Signal 信号
-    if (score <= -2) {
+    // 综合打分推导 Signal 信号 (满分 ±7)
+    if (score <= -3) {
         signal = "easing";
-        reasoning.push("宏观总结：股债汇三杀压力减轻，全球流动性显著外溢。资金正主动寻求高弹性抗通胀标的（降息预期红利期），比特币宏观上处于顺风局。");
-    } else if (score >= 2) {
+        reasoning.push("宏观总结：短端降息预期叠加长端/流动性走弱，全球美元流动性打开水龙头。资金正主动寻求高弹性抗通胀标的，比特币宏观上处于极其有利的顺风局。");
+    } else if (score >= 3) {
         signal = "tightening";
-        reasoning.push("宏观总结：流动性收紧与借款成本双高（流动性紧缩）。法币无风险收益吸筹严重，比特币宏观资金面处于逆风局，极易发生获利盘抽水（风险规避/‘卖事实’发生期）。");
+        reasoning.push("宏观总结：短端利率预期抬升叠加长端走强。法币无风险收益吸筹严重，比特币宏观资金面处于极度逆风局，极易发生获利盘抽水或‘卖事实’抛压。");
     } else {
         signal = "neutral";
-        reasoning.push("宏观总结：美联储预期管理博弈中，宏观流动性处于中性区间带。资产价格更多受技术面或加密市场内存量资金及 ETF 净流入主导。");
+        reasoning.push("宏观总结：美联储预期管理博弈中，各项宏观指标互相牵制或变动较小，总体流动性处于中性区间带。比特币走势将更多让步于加密技术面内部博弈及 ETF 净流向。");
     }
 
     return {
@@ -137,6 +166,10 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
             value: Number(us10yData.value.toFixed(3)),
             change: Number(us10yData.change.toFixed(3)),
             changePercent: Number(us10yData.changePercent.toFixed(2)),
+        },
+        impliedFedRate: {
+            value: Number(currentImpliedRate.toFixed(3)),
+            changeBps: Number(rateChangeBps.toFixed(1)),
         },
         reasoning,
         timestamp: new Date().toISOString(),

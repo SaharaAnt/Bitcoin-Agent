@@ -3,6 +3,7 @@ import { generateText } from "ai";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { analyzeMacroLiquidity } from "@/lib/engine/macro-advisor";
 
 const deepseek = createOpenAI({
     baseURL: "https://api.deepseek.com",
@@ -22,6 +23,7 @@ const AUDIT_SYSTEM_PROMPT = `
    - 1-39: 极度恐慌中“割肉（卖出）”，或极度贪婪中 All-in。完全被情绪俘虏。
 2. 反馈 (Feedback)：
    用中文回答。使用沉稳、充满哲理的语气。
+   - 结合当前的宏观流动性环境（如美联储降息/加息预期），评价用户行为是否顺应了宏观大势，还是在逆势冲动。
    - 肯定其理性的部分，指出被情绪支配的部分。
    - 偶尔引用斯多葛哲学名言（如：马可·奥勒留、塞内加、爱比克泰德）或者 "Amor Fati"。
    - 给出一两句具体的后续建议。
@@ -37,6 +39,10 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { action, amount, price, fgi, notes } = body;
 
+        // 获取最新的宏观流动性数据
+        const macro = await analyzeMacroLiquidity();
+        const macroStatus = macro.signal === 'easing' ? '宽松 (利好)' : macro.signal === 'tightening' ? '紧缩 (利空)' : '中性';
+
         // Call LLM for audit
         const userPrompt = `
 新交易条目信息：
@@ -46,7 +52,14 @@ export async function POST(req: Request) {
 - 当时市场恐惧贪婪指数 (FGI)：${fgi || "未知"}
 - 用户的心理记录与想法：${notes || "未填写"}
 
-请给出你的斯多葛审计分数和反馈。
+当前宏观流动性背景 (Macro Environment)：
+- 整体信号：${macroStatus}
+- 美元指数(DXY)：${macro.dxy.value} (日内变动 ${macro.dxy.changePercent}%)
+- 10年期美债(US10Y)：${macro.us10y.value}% (日内变动 ${macro.us10y.changePercent}%)
+- 暗示联邦基金利率 (ZQF)：${macro.impliedFedRate.value}% (预期变动 ${macro.impliedFedRate.changeBps} 基点)
+- 宏观引擎研判逻辑：${macro.reasoning.join(" | ")}
+
+请根据以上用户的微观操作和当前的宏观背景，给出你的斯多葛审计分数和反馈。
 `;
 
         const { text } = await generateText({

@@ -14,6 +14,7 @@ import StrategyAdvisor from "@/components/dashboard/strategy-advisor";
 import Ahr999Card from "@/components/dashboard/ahr999-card";
 import OnchainCard from "@/components/dashboard/onchain-card";
 import StoicCard from "@/components/dashboard/stoic-card";
+import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import TradingDiary from "@/components/dashboard/trading-diary";
 
 interface BacktestResult {
@@ -179,6 +180,7 @@ export default function DashboardClient() {
                             <PriceCard />
                             <FGICard />
                         </div>
+                        <MacroLiquidityCard />
                         <StrategyAdvisor />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

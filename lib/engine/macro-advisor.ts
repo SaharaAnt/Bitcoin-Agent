@@ -1,5 +1,5 @@
 import yahooFinance from "yahoo-finance2";
-
+import googleTrends from "google-trends-api";
 
 
 export type MacroSignal = "easing" | "tightening" | "neutral";
@@ -20,6 +20,10 @@ export interface MacroAnalysis {
     impliedFedRate: {
         value: number;
         changeBps: number;
+    };
+    retailSentiment: {
+        trend: "spiking" | "cooling" | "flat";
+        value: number; // 0-100 近期平均热度
     };
     reasoning: string[];
     timestamp: string;
@@ -55,19 +59,61 @@ async function fetchQuoteWithTimeout(symbol: string, fallbackValue = 0, timeoutM
 }
 
 /**
+ * 封装 Google Trends API 获取比特币搜索热度
+ * 返回最近 3 天的均值（近期）和过去 14 天的均值（基准），用于判断散户 FOMO
+ */
+async function fetchGoogleTrends(keyword: string = "Bitcoin") {
+    try {
+        const result: any = await Promise.race([
+            googleTrends.interestOverTime({
+                keyword,
+                startTime: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 过去 30 天
+            }),
+            new Promise((_, reject) =>
+                setTimeout(() => reject(new Error("Google Trends Timeout")), 8000)
+            ),
+        ]);
+
+        const parsed = JSON.parse(result);
+        const timeline = parsed.default.timelineData;
+        if (!timeline || timeline.length === 0) {
+            return { recentAvg: 50, trend: "flat" as const, valid: false };
+        }
+
+        // 取最近 14 天的数据
+        const recentData = timeline.slice(-14).map((d: any) => Number(d.value[0]));
+        if (recentData.length < 3) return { recentAvg: 50, trend: "flat" as const, valid: false };
+
+        const last3DaysAvg = recentData.slice(-3).reduce((a: number, b: number) => a + b, 0) / 3;
+        const previous11DaysAvg = recentData.slice(0, -3).reduce((a: number, b: number) => a + b, 0) / (recentData.length - 3);
+
+        let trend: "spiking" | "cooling" | "flat" = "flat";
+        if (last3DaysAvg > previous11DaysAvg * 1.3) trend = "spiking";
+        else if (last3DaysAvg < previous11DaysAvg * 0.7) trend = "cooling";
+
+        return { recentAvg: Math.round(last3DaysAvg), trend, valid: true };
+    } catch (err) {
+        console.warn(`[macro-advisor] Failed to fetch google trends for ${keyword}:`, err);
+        return { recentAvg: 50, trend: "flat" as const, valid: false }; // 超时降级返回默认值
+    }
+}
+
+/**
  * 全球宏观流动性分析引擎
  *
  * 核心逻辑：
  * - 结合美联储货币政策预期与比特币流动性的负相关关系。
  * - DXY (美元指数)：走弱代表美元流动性溢出，利好风险资产；走强代表避险情绪或加息预期，利空。
  * - US10Y (10年期美债收益率)：被视为无风险利率基准。下降表示借贷成本降低、降息预期增强，利好 BTC。
+ * - Google Trends (Retail Sentiment): 散户搜索量。如果在高位飙升防散户接盘(利空)，如果极度冷却说明洗盘充分(利好)。
  */
 export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
-    // 并行获取美指、十年期美债和联邦基金利率期货数据
-    const [dxyData, us10yData, zqData] = await Promise.all([
+    // 并行获取美指、十年期美债、联邦基金利率期货数据和谷歌搜索热度
+    const [dxyData, us10yData, zqData, trendsData] = await Promise.all([
         fetchQuoteWithTimeout("DX-Y.NYB", 104.0), // 美元指数
         fetchQuoteWithTimeout("^TNX", 4.2),       // 10年期美债收益率
-        fetchQuoteWithTimeout("ZQ=F", 95.38)      // 30天联邦基金利率期货 (默认为 95.38 = 暗示 4.62% 利率)
+        fetchQuoteWithTimeout("ZQ=F", 95.38),     // 30天联邦基金利率期货 (默认为 95.38 = 暗示 4.62% 利率)
+        fetchGoogleTrends("Bitcoin")              // 散户 FOMO 指标
     ]);
 
     const reasoning: string[] = [];
@@ -120,7 +166,7 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         }
     }
 
-    // 分析 美元指数 (DXY) 变化
+    // 3. 分析 美元指数 (DXY) 变化
     // DXY 走低说明美元贬值，全球美元流动性变得充裕，抗通胀资产（如BTC/黄金）价值突显
     if (dxyData.value === 104.0 && dxyData.changePercent === 0) {
         reasoning.push("美元指数数据获取异常或持平使用默认值估算");
@@ -140,6 +186,21 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         } else {
             reasoning.push(`美元指数横盘于 ${dxyData.value.toFixed(2)}，汇市暂无明确宏观大方向指引`);
         }
+    }
+
+    // 4. 分析 谷歌搜索热度 (Retail Sentiment)
+    if (trendsData.valid) {
+        if (trendsData.trend === "spiking" && trendsData.recentAvg > 75) {
+            score += 2; // 散户极度 FOMO，通常是局部见顶信号 (看跌)
+            reasoning.push(`Google趋势显示散户搜索热情正处于高位并在近期激增 (热度 ${trendsData.recentAvg})，街头巷尾都在讨论比特币，这是经典的散户进场(FOMO)和潜在顶部流动性派发信号。`);
+        } else if (trendsData.trend === "cooling" && trendsData.recentAvg < 30) {
+            score -= 2; // 散户完全失去兴趣，无人问津时买入 (看涨)
+            reasoning.push(`Google趋势显示散户搜索兴趣冰冷且持续下降 (热度 ${trendsData.recentAvg})，市场冷清无人问津，洗盘充分，符合经典的“在绝望中建仓”逆向积累契机。`);
+        } else {
+            reasoning.push(`Google趋势散户搜索热度处于中性平稳状态 (热度 ${trendsData.recentAvg})，情绪面暂未出现极端的群体性疯狂或绝望。`);
+        }
+    } else {
+        reasoning.push("无法获取 Google 搜索热度数据，临时忽略该零售指标。");
     }
 
     // 综合打分推导 Signal 信号 (满分 ±7)
@@ -170,6 +231,10 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         impliedFedRate: {
             value: Number(currentImpliedRate.toFixed(3)),
             changeBps: Number(rateChangeBps.toFixed(1)),
+        },
+        retailSentiment: {
+            trend: trendsData.trend,
+            value: trendsData.recentAvg,
         },
         reasoning,
         timestamp: new Date().toISOString(),

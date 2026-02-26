@@ -93,7 +93,7 @@ export default function MacroLiquidityCard() {
                     </div>
                 </div>
 
-                {/* 美债 与 美元 */}
+                {/* 美债 与 美元 与 散户情绪 */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)", padding: "8px 12px", borderRadius: 8 }}>
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>US10Y 美债</span>
@@ -113,6 +113,24 @@ export default function MacroLiquidityCard() {
                             </span>
                         </div>
                     </div>
+                    {macro.retailSentiment && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255,255,255,0.02)", padding: "8px 12px", borderRadius: 8 }}>
+                            <span style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
+                                搜索热度 (FOMO)
+                            </span>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                                    {macro.retailSentiment.value}
+                                </span>
+                                <span style={{
+                                    fontSize: 11,
+                                    color: macro.retailSentiment.trend === 'spiking' ? "var(--danger-color)" : macro.retailSentiment.trend === 'cooling' ? "var(--success-color)" : "var(--text-muted)"
+                                }}>
+                                    {macro.retailSentiment.trend === 'spiking' ? '🔥 激增' : macro.retailSentiment.trend === 'cooling' ? '❄️ 冷却' : '平稳'}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

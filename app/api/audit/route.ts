@@ -52,12 +52,13 @@ export async function POST(req: Request) {
 - 当时市场恐惧贪婪指数 (FGI)：${fgi || "未知"}
 - 用户的心理记录与想法：${notes || "未填写"}
 
-当前宏观流动性背景 (Macro Environment)：
-- 整体信号：${macroStatus}
+当前宏观流动性与群体情绪 (Macro & Retail Sentiment)：
+- 整体宏观信号：${macroStatus}
 - 美元指数(DXY)：${macro.dxy.value} (日内变动 ${macro.dxy.changePercent}%)
 - 10年期美债(US10Y)：${macro.us10y.value}% (日内变动 ${macro.us10y.changePercent}%)
 - 暗示联邦基金利率 (ZQF)：${macro.impliedFedRate.value}% (预期变动 ${macro.impliedFedRate.changeBps} 基点)
-- 宏观引擎研判逻辑：${macro.reasoning.join(" | ")}
+- Google搜索热度 (散户FOMO指标)：${macro.retailSentiment.value} (${macro.retailSentiment.trend === 'spiking' ? '激增/狂热' : macro.retailSentiment.trend === 'cooling' ? '冷却/无人问津' : '平稳'})
+- 宏观引擎总研判逻辑：${macro.reasoning.join(" | ")}
 
 请根据以上用户的微观操作和当前的宏观背景，给出你的斯多葛审计分数和反馈。
 `;

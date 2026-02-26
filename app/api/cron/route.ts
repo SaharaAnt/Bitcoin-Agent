@@ -12,6 +12,7 @@ import { sendAlertEmail, simpleMarkdownToHtml } from "@/lib/api/email";
 
 // Ensure Edge runtime is not used if Prisma isn't Edge-compatible in this setup, usually Node is fine for Cron.
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // Allow up to 60 seconds on Vercel to prevent timeouts
 
 const deepseek = createOpenAI({
     baseURL: "https://api.deepseek.com",

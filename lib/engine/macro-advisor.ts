@@ -1,5 +1,6 @@
 import yahooFinance from "yahoo-finance2";
 import googleTrends from "google-trends-api";
+import { getBtcCommunityData } from "@/lib/api/coingecko";
 
 
 export type MacroSignal = "easing" | "tightening" | "neutral";
@@ -25,6 +26,11 @@ export interface MacroAnalysis {
         trend: "spiking" | "cooling" | "flat";
         value: number; // 0-100 近期平均热度
         timeline: Array<{ date: string; value: number }>;
+        reddit?: {
+            subscribers: number;
+            activeAccounts: number;
+            postActivity: number; // avg posts 48h
+        };
     };
     reasoning: string[];
     timestamp: string;
@@ -118,12 +124,13 @@ async function fetchGoogleTrends(keyword: string = "Bitcoin") {
  * - Google Trends (Retail Sentiment): 散户搜索量。如果在高位飙升防散户接盘(利空)，如果极度冷却说明洗盘充分(利好)。
  */
 export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
-    // 并行获取美指、十年期美债、联邦基金利率期货数据和谷歌搜索热度
-    const [dxyData, us10yData, zqData, trendsData] = await Promise.all([
+    // 并行获取美指、十年期美债、联邦基金利率期货数据、谷歌搜索热度和 Reddit 社区数据
+    const [dxyData, us10yData, zqData, trendsData, redditData] = await Promise.all([
         fetchQuoteWithTimeout("DX-Y.NYB", 104.0), // 美元指数
         fetchQuoteWithTimeout("^TNX", 4.2),       // 10年期美债收益率
-        fetchQuoteWithTimeout("ZQ=F", 95.38),     // 30天联邦基金利率期货 (默认为 95.38 = 暗示 4.62% 利率)
-        fetchGoogleTrends("Bitcoin")              // 散户 FOMO 指标
+        fetchQuoteWithTimeout("ZQ=F", 95.38),     // 30天联邦基金利率期货
+        fetchGoogleTrends("Bitcoin"),             // 散户 FOMO 指标
+        getBtcCommunityData().catch(() => null)    // Reddit 社区活跃度
     ]);
 
     const reasoning: string[] = [];
@@ -213,6 +220,18 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         reasoning.push("无法获取 Google 搜索热度数据，临时忽略该零售指标。");
     }
 
+    // 5. 分析 Reddit 社区活跃度
+    if (redditData) {
+        // 如果 48h 平均发帖量过高 (例如 > 20)，说明散户讨论异常活跃，可能是情绪顶点
+        if (redditData.redditAveragePosts48h > 20) {
+            score += 1;
+            reasoning.push(`Reddit (r/Bitcoin) 讨论热度极高 (48h日均发帖 ${redditData.redditAveragePosts48h.toFixed(1)})，群体情绪亢奋，需警惕局部情绪过热。`);
+        } else if (redditData.redditAveragePosts48h < 5) {
+            score -= 1;
+            reasoning.push(`Reddit 讨论冷清，散户参与度处于低位，市场洗盘充分。`);
+        }
+    }
+
     // 综合打分推导 Signal 信号 (满分 ±7)
     if (score <= -3) {
         signal = "easing";
@@ -246,6 +265,11 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
             trend: trendsData.trend,
             value: trendsData.recentAvg,
             timeline: trendsData.timeline || [],
+            reddit: redditData ? {
+                subscribers: redditData.redditSubscribers,
+                activeAccounts: redditData.redditActiveAccounts,
+                postActivity: redditData.redditAveragePosts48h
+            } : undefined
         },
         reasoning,
         timestamp: new Date().toISOString(),

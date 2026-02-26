@@ -123,3 +123,28 @@ export async function get200DMA(): Promise<number> {
 export async function get60DMA(): Promise<number> {
     return getMovingAverage(60);
 }
+
+export async function getBtcCommunityData(): Promise<{
+    redditSubscribers: number;
+    redditActiveAccounts: number;
+    redditAveragePosts48h: number;
+    redditAverageComments48h: number;
+}> {
+    const url = `${COINGECKO_BASE}/coins/bitcoin?localization=false&tickers=false&market_data=false&community_data=true&developer_data=false&sparkline=false`;
+
+    const data = await fetchWithCache<{
+        community_data: {
+            reddit_subscribers: number;
+            reddit_accounts_active_48h: number;
+            reddit_average_posts_48h: number;
+            reddit_average_comments_48h: number;
+        };
+    }>(url, 300_000); // 缓存 5 分钟
+
+    return {
+        redditSubscribers: data.community_data.reddit_subscribers,
+        redditActiveAccounts: data.community_data.reddit_accounts_active_48h,
+        redditAveragePosts48h: data.community_data.reddit_average_posts_48h,
+        redditAverageComments48h: data.community_data.reddit_average_comments_48h,
+    };
+}

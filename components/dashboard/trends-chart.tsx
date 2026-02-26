@@ -9,13 +9,18 @@ import {
     ResponsiveContainer,
     CartesianGrid,
 } from "recharts";
-import { TrendingUp, Info } from "lucide-react";
+import { TrendingUp, Info, Users, MessageSquare } from "lucide-react";
 
 interface TrendsChartProps {
     data: Array<{ date: string; value: number }>;
+    reddit?: {
+        subscribers: number;
+        activeAccounts: number;
+        postActivity: number;
+    };
 }
 
-export default function TrendsChart({ data }: TrendsChartProps) {
+export default function TrendsChart({ data, reddit }: TrendsChartProps) {
     if (!data || data.length === 0) {
         return null;
     }
@@ -103,11 +108,33 @@ export default function TrendsChart({ data }: TrendsChartProps) {
                 fontSize: 11,
                 color: "var(--text-secondary)",
                 display: "flex",
-                alignItems: "center",
+                flexDirection: "column",
                 gap: 8
             }}>
-                <Info size={14} color="var(--btc-orange)" />
-                综合 Bitcoin, Buy Bitcoin 等关键词，反映大众入场意愿。
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Info size={14} color="var(--btc-orange)" />
+                    综合 Bitcoin, Buy Bitcoin 等关键词，反映大众入场意愿。
+                </div>
+
+                {reddit && (
+                    <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 12,
+                        marginTop: 4,
+                        borderTop: "1px solid rgba(255,255,255,0.05)",
+                        paddingTop: 8
+                    }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <Users size={12} color="var(--text-muted)" />
+                            <span>r/Bitcoin 粉丝: <b style={{ color: "var(--text-primary)" }}>{(reddit.subscribers / 1e6).toFixed(2)}M</b></span>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <MessageSquare size={12} color="var(--text-muted)" />
+                            <span>48h 活跃发帖: <b style={{ color: "var(--text-primary)" }}>{reddit.postActivity.toFixed(1)}/day</b></span>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -203,7 +203,10 @@ export default function DashboardClient() {
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                         {macro?.retailSentiment?.timeline && (
-                            <TrendsChart data={macro.retailSentiment.timeline} />
+                            <TrendsChart
+                                data={macro.retailSentiment.timeline}
+                                reddit={macro.retailSentiment.reddit}
+                            />
                         )}
                         <Ahr999Card />
                         <OnchainCard />

@@ -24,6 +24,7 @@ export interface MacroAnalysis {
     retailSentiment: {
         trend: "spiking" | "cooling" | "flat";
         value: number; // 0-100 近期平均热度
+        timeline: Array<{ date: string; value: number }>;
     };
     reasoning: string[];
     timestamp: string;
@@ -66,7 +67,7 @@ async function fetchGoogleTrends(keyword: string = "Bitcoin") {
     try {
         const result: any = await Promise.race([
             googleTrends.interestOverTime({
-                keyword,
+                keyword: ["Bitcoin", "Buy Bitcoin", "Crypto"], // 拓展关键词
                 startTime: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 过去 30 天
             }),
             new Promise((_, reject) =>
@@ -76,25 +77,34 @@ async function fetchGoogleTrends(keyword: string = "Bitcoin") {
 
         const parsed = JSON.parse(result);
         const timeline = parsed.default.timelineData;
+
         if (!timeline || timeline.length === 0) {
-            return { recentAvg: 50, trend: "flat" as const, valid: false };
+            return { recentAvg: 50, trend: "flat" as const, timeline: [], valid: false };
         }
 
-        // 取最近 14 天的数据
-        const recentData = timeline.slice(-14).map((d: any) => Number(d.value[0]));
-        if (recentData.length < 3) return { recentAvg: 50, trend: "flat" as const, valid: false };
+        // 提取数据点，如果有多个关键词，取均值或第一个（Bitcoin）
+        const formattedTimeline = timeline.map((d: any) => ({
+            date: new Date(Number(d.time) * 1000).toISOString().split('T')[0],
+            value: Number(d.value[0]) // 主索引设为 Bitcoin
+        }));
 
-        const last3DaysAvg = recentData.slice(-3).reduce((a: number, b: number) => a + b, 0) / 3;
-        const previous11DaysAvg = recentData.slice(0, -3).reduce((a: number, b: number) => a + b, 0) / (recentData.length - 3);
+        const values = formattedTimeline.map((d: { value: number }) => d.value);
+        const last3DaysAvg = values.slice(-3).reduce((a: number, b: number) => a + b, 0) / 3;
+        const previous27DaysAvg = values.slice(0, -3).reduce((a: number, b: number) => a + b, 0) / (values.length - 3);
 
         let trend: "spiking" | "cooling" | "flat" = "flat";
-        if (last3DaysAvg > previous11DaysAvg * 1.3) trend = "spiking";
-        else if (last3DaysAvg < previous11DaysAvg * 0.7) trend = "cooling";
+        if (last3DaysAvg > previous27DaysAvg * 1.3) trend = "spiking";
+        else if (last3DaysAvg < previous27DaysAvg * 0.7) trend = "cooling";
 
-        return { recentAvg: Math.round(last3DaysAvg), trend, valid: true };
+        return {
+            recentAvg: Math.round(last3DaysAvg),
+            trend,
+            timeline: formattedTimeline,
+            valid: true
+        };
     } catch (err) {
-        console.warn(`[macro-advisor] Failed to fetch google trends for ${keyword}:`, err);
-        return { recentAvg: 50, trend: "flat" as const, valid: false }; // 超时降级返回默认值
+        console.warn(`[macro-advisor] Failed to fetch google trends:`, err);
+        return { recentAvg: 50, trend: "flat" as const, timeline: [], valid: false };
     }
 }
 
@@ -235,6 +245,7 @@ export async function analyzeMacroLiquidity(): Promise<MacroAnalysis> {
         retailSentiment: {
             trend: trendsData.trend,
             value: trendsData.recentAvg,
+            timeline: trendsData.timeline || [],
         },
         reasoning,
         timestamp: new Date().toISOString(),

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Activity, Droplets, TrendingDown, TrendingUp, AlertTriangle } from "lucide-react";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
+import TrendsChart from "./trends-chart";
 
 export default function MacroLiquidityCard() {
     const [macro, setMacro] = useState<MacroAnalysis | null>(null);
@@ -140,6 +141,13 @@ export default function MacroLiquidityCard() {
                     {macro.reasoning[macro.reasoning.length - 1].replace("宏观总结：", "")}
                 </p>
             </div>
+
+            {/* Trends Chart Integration */}
+            {macro.retailSentiment?.timeline && (
+                <div style={{ marginTop: 24 }}>
+                    <TrendsChart data={macro.retailSentiment.timeline} />
+                </div>
+            )}
         </div>
     );
 }

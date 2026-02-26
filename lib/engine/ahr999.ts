@@ -40,23 +40,6 @@ function getExpectedPrice(coinAgeDays: number): number {
     return Math.pow(10, 5.84 * Math.log10(coinAgeDays) - 17.01);
 }
 
-async function get200DMA(): Promise<number> {
-    const now = new Date();
-    const from = new Date(now.getTime() - 210 * 24 * 60 * 60 * 1000); // 210 days buffer
-
-    const prices = await getBtcPriceHistory(from, now);
-
-    if (prices.length < 200) {
-        // If not enough data, use whatever we have
-        const sum = prices.reduce((s, p) => s + p.price, 0);
-        return sum / prices.length;
-    }
-
-    // Take last 200 data points
-    const last200 = prices.slice(-200);
-    const sum = last200.reduce((s, p) => s + p.price, 0);
-    return sum / 200;
-}
 
 async function fetchWithTimeout<T>(
     fn: () => Promise<T>,
@@ -78,6 +61,7 @@ async function fetchWithTimeout<T>(
 }
 
 export async function calculateAhr999(): Promise<Ahr999Data> {
+    const { get200DMA } = await import("../api/coingecko");
     const [btcData, ma200] = await Promise.all([
         fetchWithTimeout(
             () => getBtcCurrentPrice(),

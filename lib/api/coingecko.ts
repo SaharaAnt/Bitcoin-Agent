@@ -95,3 +95,31 @@ export async function getBtcDailyPrices(
         (a, b) => a.timestamp - b.timestamp
     );
 }
+
+export async function getMovingAverage(days: number): Promise<number> {
+    const now = new Date();
+    // Add a small buffer to handle incomplete days
+    const from = new Date(now.getTime() - (days + 10) * 24 * 60 * 60 * 1000);
+
+    const prices = await getBtcPriceHistory(from, now);
+
+    if (prices.length < days) {
+        // If not enough data, use whatever we have left
+        if (prices.length === 0) return 0;
+        const sum = prices.reduce((s, p) => s + p.price, 0);
+        return sum / prices.length;
+    }
+
+    // Take last N data points
+    const lastN = prices.slice(-days);
+    const sum = lastN.reduce((s, p) => s + p.price, 0);
+    return sum / days;
+}
+
+export async function get200DMA(): Promise<number> {
+    return getMovingAverage(200);
+}
+
+export async function get60DMA(): Promise<number> {
+    return getMovingAverage(60);
+}

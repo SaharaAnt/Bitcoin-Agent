@@ -28,7 +28,7 @@ const DEFILLAMA_YIELDS_API = "https://yields.llama.fi";
 
 // The Aave V3 WBTC pool on Ethereum is a good benchmark for deep liquidity BTC lending.
 // Pool UUID from DefiLlama
-const AAVE_V3_WBTC_POOL_ID = "7e38215a-0685-408e-841f-dfdcbb22a832";
+const AAVE_V3_WBTC_POOL_ID = "7e382157-b1bc-406d-b17b-facba43b716e";
 
 export async function getBitcoinLendingRates() {
     try {

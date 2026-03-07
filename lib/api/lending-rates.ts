@@ -126,8 +126,8 @@ export async function getUsdtLendingRates() {
             current: {
                 project: usdtPool.project,
                 symbol: usdtPool.symbol,
-                supplyApy: usdtPool.apyBase || 0,
-                borrowApy: usdtPool.apyBaseBorrow || 0,
+                supplyApy: usdtPool.apyBase || (latestChartData ? latestChartData.apyBase : 0) || 0,
+                borrowApy: usdtPool.apyBaseBorrow || (latestChartData ? latestChartData.apyBaseBorrow : 0) || 0,
                 tvl: usdtPool.tvlUsd || 0,
                 totalBorrow: usdtPool.totalBorrowUsd || (latestChartData ? latestChartData.totalBorrowUsd : 0) || 0,
             },

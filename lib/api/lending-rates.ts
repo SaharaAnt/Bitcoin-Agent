@@ -49,7 +49,7 @@ export async function getBitcoinLendingRates() {
 
         // 2. Fetch historical lending/borrowing chart for the pool
         const chartRes = await fetch(`${DEFILLAMA_YIELDS_API}/chartLendBorrow/${TARGET_WBTC_POOL_ID}`, {
-            next: { revalidate: 3600 }
+            next: { revalidate: 600 }
         });
 
         if (!chartRes.ok) throw new Error("Failed to fetch pool chart data");
@@ -91,7 +91,7 @@ export async function getBitcoinLendingRates() {
 export async function getUsdtLendingRates() {
     try {
         const poolRes = await fetch(`${DEFILLAMA_YIELDS_API}/pools`, {
-            next: { revalidate: 3600 }
+            next: { revalidate: 600 }
         });
 
         if (!poolRes.ok) throw new Error("Failed to fetch pools from DeFiLlama");
@@ -104,7 +104,7 @@ export async function getUsdtLendingRates() {
         }
 
         const chartRes = await fetch(`${DEFILLAMA_YIELDS_API}/chartLendBorrow/${TARGET_USDT_POOL_ID}`, {
-            next: { revalidate: 3600 }
+            next: { revalidate: 600 }
         });
 
         if (!chartRes.ok) throw new Error("Failed to fetch pool chart data");

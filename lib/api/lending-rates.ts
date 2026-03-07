@@ -29,6 +29,7 @@ const DEFILLAMA_YIELDS_API = "https://yields.llama.fi";
 // Compound V3 WBTC pool on Ethereum consistently has active borrowing demand and rates.
 // Pool UUID from DefiLlama
 const TARGET_WBTC_POOL_ID = "c1ca08e4-d618-415e-ad63-fcec58705469";
+const TARGET_USDT_POOL_ID = "f981a304-bb6c-45b8-b0c5-fd2f515ad23a";
 
 export async function getBitcoinLendingRates() {
     try {
@@ -83,6 +84,57 @@ export async function getBitcoinLendingRates() {
         };
     } catch (err: any) {
         console.error("Failed to fetch BTC lending rates:", err);
+        return { error: err.message };
+    }
+}
+
+export async function getUsdtLendingRates() {
+    try {
+        const poolRes = await fetch(`${DEFILLAMA_YIELDS_API}/pools`, {
+            next: { revalidate: 3600 }
+        });
+
+        if (!poolRes.ok) throw new Error("Failed to fetch pools from DeFiLlama");
+        const poolsData = await poolRes.json();
+
+        const usdtPool = poolsData.data.find((p: any) => p.pool === TARGET_USDT_POOL_ID);
+
+        if (!usdtPool) {
+            throw new Error("Could not find USDT pool data");
+        }
+
+        const chartRes = await fetch(`${DEFILLAMA_YIELDS_API}/chartLendBorrow/${TARGET_USDT_POOL_ID}`, {
+            next: { revalidate: 3600 }
+        });
+
+        if (!chartRes.ok) throw new Error("Failed to fetch pool chart data");
+        const chartData = await chartRes.json();
+
+        const history30d = Array.isArray(chartData.data)
+            ? chartData.data.slice(-30).map((d: any) => ({
+                date: d.timestamp.split('T')[0],
+                supplyApy: d.apyBase || 0,
+                borrowApy: d.apyBaseBorrow || 0
+            }))
+            : [];
+
+        const latestChartData = Array.isArray(chartData.data) && chartData.data.length > 0
+            ? chartData.data[chartData.data.length - 1]
+            : null;
+
+        return {
+            current: {
+                project: usdtPool.project,
+                symbol: usdtPool.symbol,
+                supplyApy: usdtPool.apyBase || 0,
+                borrowApy: usdtPool.apyBaseBorrow || 0,
+                tvl: usdtPool.tvlUsd || 0,
+                totalBorrow: usdtPool.totalBorrowUsd || (latestChartData ? latestChartData.totalBorrowUsd : 0) || 0,
+            },
+            history: history30d
+        };
+    } catch (err: any) {
+        console.error("Failed to fetch USDT lending rates:", err);
         return { error: err.message };
     }
 }

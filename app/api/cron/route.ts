@@ -10,6 +10,7 @@ import { calculateAhr999 } from "@/lib/engine/ahr999";
 import { analyzeMacroLiquidity } from "@/lib/engine/macro-advisor";
 import { prisma } from "@/lib/prisma";
 import { sendAlertEmail, simpleMarkdownToHtml } from "@/lib/api/email";
+import etfData from "@/lib/data/farside-data.json";
 
 // Ensure Edge runtime is not used if Prisma isn't Edge-compatible in this setup, usually Node is fine for Cron.
 export const dynamic = "force-dynamic";
@@ -43,11 +44,18 @@ export async function GET(req: Request) {
         ]);
         const liquidations = await getMockedLiquidations(fgi.value, btc.change24h);
 
-        // 3. Determine if market is "Extreme"
+        // 3. ETF Data calculation
+        const validEtfData = (etfData as { date: string; total: number }[]).filter(d => !isNaN(d.total));
+        const latestEtf = validEtfData.length > 0 ? validEtfData[validEtfData.length - 1] : null;
+        const etfFlowText = latestEtf
+            ? `最近一日 (${latestEtf.date}) 净流向: ${latestEtf.total > 0 ? "+" : ""}${(latestEtf.total / 1_000_000).toFixed(1)} 百万美元`
+            : "暂无最新 ETF 数据";
+
+        // 4. Determine if market is "Extreme"
         // Criteria: FGI <= 25 (Extreme Fear) OR FGI >= 75 (Extreme Greed) OR BTC drops > 5% in 24h
         const isExtreme = fgi.value <= 25 || fgi.value >= 75 || btc.change24h <= -5;
 
-        // 4. Generate AI Analysis with Stoic Persona
+        // 5. Generate AI Analysis with Stoic Persona
         const prompt = `
 作为一位秉持斯多葛哲学的资深 Bitcoin HODLer，请根据以下最新市场数据，写一份简短有力的客观评估与建议（约300字）。
 
@@ -57,6 +65,7 @@ export async function GET(req: Request) {
 - 链上均线(技术面): MA200(长线牛熊): $${ahr.ma200.toLocaleString()}，MA60(中期强弱): $${Math.round(ma60).toLocaleString()}
 - Ahr999 囤币指数: ${ahr.value.toFixed(3)} (${ahr.zoneLabel})
 - 恐慌贪婪指数 (FGI): ${fgi.value} (${fgi.label})
+- 华尔街机构动向 (ETF): ${etfFlowText}
 - 系统策略建议: ${strategy.signalLabel} (依据: ${strategy.suggestion.reasoning.join('; ')})
 - 全网期货爆仓: 过去24小时爆仓 ${liquidations.totalLiquidationsUSD} 亿美元（主要爆仓方: ${liquidations.dominantSide}。${liquidations.reasoning}）
 - 网络拥堵状况: ${mempool.isCongested ? "极度拥堵" : "畅通"} (${mempool.reasoning})

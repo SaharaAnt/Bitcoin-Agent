@@ -1,0 +1,43 @@
+name: Daily ETF Data Update
+
+on:
+  schedule:
+    # 00:00 UTC is 08:00 AM Beijing Time
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install Dependencies
+        run: npm ci
+        
+      - name: Install Puppeteer Browsers
+        run: npx puppeteer browsers install chrome
+        
+      - name: Run ETF Scraper
+        run: npx tsx scripts/update-farside.ts
+        
+      - name: Check for changes
+        id: git-check
+        run: |
+          git diff --exit-code lib/data/farside-data.json || echo "changed=true" >> $GITHUB_OUTPUT
+          
+      - name: Commit and Push changes
+        if: steps.git-check.outputs.changed == 'true'
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add lib/data/farside-data.json
+          git commit -m "chore: daily update of ETF flows data"
+          git push

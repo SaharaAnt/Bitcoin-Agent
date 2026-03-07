@@ -7,6 +7,8 @@ import { analyzeMarketConditions } from "../engine/strategy-advisor";
 import { calculateAhr999 } from "../engine/ahr999";
 import { getNetworkCongestionStatus } from "../api/mempool";
 import { getMockedLiquidations } from "../api/liquidations";
+import fs from "fs";
+import path from "path";
 import type { Frequency } from "../engine/types";
 
 export const agentTools = {
@@ -261,6 +263,47 @@ export const agentTools = {
                     analysis: liquidations.reasoning,
                 },
             };
+        },
+    }),
+
+    getEtfFlows: tool({
+        description:
+            "获取比特币现货 ETF 的最新资金流向数据(单位: 百万美元)。用于判断华尔街资金的买卖情绪。正数表示净流入，负数表示净流出。",
+        inputSchema: z.object({}),
+        execute: async () => {
+            try {
+                const filePath = path.join(process.cwd(), "lib", "data", "farside-data.json");
+                const fileData = fs.readFileSync(filePath, "utf-8");
+                const data: { date: string; total: number }[] = JSON.parse(fileData);
+
+                const validData = data.filter((d) => !isNaN(d.total));
+                if (validData.length === 0) throw new Error("No data");
+
+                const latest5Days = validData.slice(-5).map((d) => ({
+                    date: d.date,
+                    netFlowM: d.total / 1_000_000,
+                }));
+
+                const latestDay = latest5Days[latest5Days.length - 1];
+                let totalNetInflow = 0;
+                validData.forEach((d) => totalNetInflow += d.total);
+
+                return {
+                    latestDay: {
+                        date: latestDay.date,
+                        netFlow: `${latestDay.netFlowM > 0 ? "+" : ""}${latestDay.netFlowM.toFixed(1)} 百万美元`,
+                        sentiment: latestDay.netFlowM > 0 ? "资金流入 (看涨)" : "资金流出 (看跌)"
+                    },
+                    recent5DaysTrend: latest5Days.map(d => `${d.date}: ${d.netFlowM > 0 ? "+" : ""}${d.netFlowM.toFixed(1)}M`).join(" | "),
+                    totalHistoricalInflow: `$${(totalNetInflow / 1_000_000 / 1000).toFixed(2)} Billion`,
+                    interpretation: latestDay.netFlowM > 0
+                        ? "华尔街资金正在买入，为市场提供强力支撑。"
+                        : "华尔街资金正在流出，短期可能存在抛压风险。"
+                };
+            } catch (err) {
+                console.error("Agent error reading ETF data:", err);
+                return { error: "无法获取最新的 ETF 资金流向数据。" };
+            }
         },
     }),
 };

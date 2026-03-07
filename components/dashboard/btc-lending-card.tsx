@@ -92,7 +92,7 @@ export default function BtcLendingCard() {
                                 className="font-mono font-bold"
                                 style={{ fontSize: 28, color: "var(--orange)", lineHeight: 1 }}
                             >
-                                {borrowApy.toFixed(2)}%
+                                {borrowApy ? borrowApy.toFixed(2) + '%' : 'N/A'}
                             </span>
                         </div>
                     </div>

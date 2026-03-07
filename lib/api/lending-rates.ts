@@ -26,28 +26,28 @@ export interface YieldChartData {
 
 const DEFILLAMA_YIELDS_API = "https://yields.llama.fi";
 
-// The Aave V3 WBTC pool on Ethereum is a good benchmark for deep liquidity BTC lending.
+// Compound V3 WBTC pool on Ethereum consistently has active borrowing demand and rates.
 // Pool UUID from DefiLlama
-const AAVE_V3_WBTC_POOL_ID = "7e382157-b1bc-406d-b17b-facba43b716e";
+const TARGET_WBTC_POOL_ID = "c1ca08e4-d618-415e-ad63-fcec58705469";
 
 export async function getBitcoinLendingRates() {
     try {
-        // Fetch current pool details
+        // 1. Fetch current pool data (TVL, project info, base rates)
         const poolRes = await fetch(`${DEFILLAMA_YIELDS_API}/pools`, {
             next: { revalidate: 3600 } // Cache 1 hr
         });
 
-        if (!poolRes.ok) throw new Error("Failed to fetch pools");
+        if (!poolRes.ok) throw new Error("Failed to fetch pools from DeFiLlama");
         const poolsData = await poolRes.json();
 
-        const aaveV3WbtcPool = poolsData.data.find((p: any) => p.pool === AAVE_V3_WBTC_POOL_ID);
+        const wbtcPool = poolsData.data.find((p: any) => p.pool === TARGET_WBTC_POOL_ID);
 
-        if (!aaveV3WbtcPool) {
-            throw new Error("Could not find Aave WBTC pool data");
+        if (!wbtcPool) {
+            throw new Error("Could not find WBTC pool data");
         }
 
-        // Fetch historical chart (last 30 days)
-        const chartRes = await fetch(`${DEFILLAMA_YIELDS_API}/chartLendBorrow/${AAVE_V3_WBTC_POOL_ID}`, {
+        // 2. Fetch historical lending/borrowing chart for the pool
+        const chartRes = await fetch(`${DEFILLAMA_YIELDS_API}/chartLendBorrow/${TARGET_WBTC_POOL_ID}`, {
             next: { revalidate: 3600 }
         });
 
@@ -65,14 +65,19 @@ export async function getBitcoinLendingRates() {
             }))
             : [];
 
+        // Find the latest chart data point to get the most recent totalBorrowUsd if wbtcPool doesn't have it
+        const latestChartData = Array.isArray(chartData.data) && chartData.data.length > 0
+            ? chartData.data[chartData.data.length - 1]
+            : null;
+
         return {
             current: {
-                project: "Aave V3 (Ethereum)",
-                symbol: "WBTC",
-                supplyApy: aaveV3WbtcPool.apyBase || 0,
-                borrowApy: aaveV3WbtcPool.apyBaseBorrow || 0,
-                tvl: aaveV3WbtcPool.tvlUsd || 0,
-                totalBorrow: aaveV3WbtcPool.totalBorrowUsd || 0,
+                project: wbtcPool.project,
+                symbol: wbtcPool.symbol,
+                supplyApy: wbtcPool.apyBase || 0,
+                borrowApy: wbtcPool.apyBaseBorrow || 0,
+                tvl: wbtcPool.tvlUsd || 0,
+                totalBorrow: wbtcPool.totalBorrowUsd || (latestChartData ? latestChartData.totalBorrowUsd : 0) || 0,
             },
             history: history30d
         };

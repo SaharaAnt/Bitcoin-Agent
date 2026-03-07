@@ -7,9 +7,8 @@ import { analyzeMarketConditions } from "../engine/strategy-advisor";
 import { calculateAhr999 } from "../engine/ahr999";
 import { getNetworkCongestionStatus } from "../api/mempool";
 import { getMockedLiquidations } from "../api/liquidations";
-import fs from "fs";
-import path from "path";
 import type { Frequency } from "../engine/types";
+import etfData from "../data/farside-data.json";
 
 export const agentTools = {
     runDCABacktest: tool({
@@ -272,9 +271,7 @@ export const agentTools = {
         inputSchema: z.object({}),
         execute: async () => {
             try {
-                const filePath = path.join(process.cwd(), "lib", "data", "farside-data.json");
-                const fileData = fs.readFileSync(filePath, "utf-8");
-                const data: { date: string; total: number }[] = JSON.parse(fileData);
+                const data: { date: string; total: number }[] = etfData;
 
                 const validData = data.filter((d) => !isNaN(d.total));
                 if (validData.length === 0) throw new Error("No data");

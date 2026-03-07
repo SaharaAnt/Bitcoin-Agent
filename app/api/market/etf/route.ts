@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import etfData from "@/lib/data/farside-data.json";
 
 export async function GET() {
     try {
-        const filePath = path.join(process.cwd(), "lib", "data", "farside-data.json");
-        const fileData = fs.readFileSync(filePath, "utf-8");
-        const data: { date: string; total: number }[] = JSON.parse(fileData);
+        const data: { date: string; total: number }[] = etfData;
 
         if (!data || data.length === 0) {
             return NextResponse.json({ error: "No data available" }, { status: 404 });

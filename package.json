@@ -17,6 +17,7 @@
     "@prisma/client": "^7.4.1",
     "ai": "^6.0.94",
     "bcryptjs": "^3.0.3",
+    "bitcoin-etf-data": "^2.0.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.34.3",
     "google-trends-api": "^4.9.2",

@@ -1328,6 +1328,11 @@ bcryptjs@^3.0.3:
   resolved "https://registry.npmjs.org/bcryptjs/-/bcryptjs-3.0.3.tgz"
   integrity sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==
 
+bitcoin-etf-data@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.npmjs.org/bitcoin-etf-data/-/bitcoin-etf-data-2.0.0.tgz"
+  integrity sha512-OPmhYEhW40BemqO+t8d5mFka/QMnQMHwqbINgy1S1ODzRf0B6U3ZmT29w4fYPyp2CQFHs0IGDdTfPr++6nJb2w==
+
 brace-expansion@^1.1.7:
   version "1.1.12"
   resolved "https://registry.npmjs.org/brace-expansion/-/brace-expansion-1.1.12.tgz"

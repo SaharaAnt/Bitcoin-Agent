@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 
 export default function EtfFlowsCard() {
     const [data, setData] = useState<any>(null);
@@ -69,8 +69,29 @@ export default function EtfFlowsCard() {
     }
 
     return (
-        <div className="card-glass p-6" style={{ minHeight: '140px' }}>
-            <h3 className="section-title mb-4">Daily BTC ETF Net Flow</h3>
+        <div className="card-glass p-6 min-h-[140px] relative">
+            <div className="flex justify-between items-start mb-4">
+                <h3 className="section-title">Daily BTC ETF Net Flow</h3>
+                {data?.isMock && (
+                    <div
+                        title={`API Limited: ${data.reason}`}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 10,
+                            color: 'var(--orange)',
+                            background: 'rgba(249, 115, 22, 0.1)',
+                            padding: '4px 8px',
+                            borderRadius: 12
+                        }}
+                    >
+                        <AlertTriangle size={12} />
+                        Demo Data
+                    </div>
+                )}
+            </div>
+
             {recentInflow !== null ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <div

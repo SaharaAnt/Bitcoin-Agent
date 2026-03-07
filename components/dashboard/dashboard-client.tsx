@@ -14,7 +14,6 @@ import StrategyAdvisor from "@/components/dashboard/strategy-advisor";
 import Ahr999Card from "@/components/dashboard/ahr999-card";
 import OnchainCard from "@/components/dashboard/onchain-card";
 import StoicCard from "@/components/dashboard/stoic-card";
-import EtfFlowsCard from "@/components/dashboard/etf-flows-card";
 import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
@@ -224,7 +223,7 @@ export default function DashboardClient() {
                     }}
                 >
                     <StoicCard />
-                    <EtfFlowsCard />
+                    <div></div>
                 </div>
 
                 {/* Backtest Section */}

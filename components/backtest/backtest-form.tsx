@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Play, Zap, Calendar, DollarSign, BarChart3 } from "lucide-react";
+import { Play, Zap, Calendar, DollarSign, BarChart3, BookOpen, ChevronDown, ChevronUp } from "lucide-react";
+import StoicCard from "@/components/dashboard/stoic-card";
 
 interface BacktestFormProps {
     onSubmit: (params: {
@@ -26,6 +27,7 @@ export default function BacktestForm({ onSubmit, loading }: BacktestFormProps) {
     const [amount, setAmount] = useState(100);
     const [smartDCA, setSmartDCA] = useState(false);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    const [showStoic, setShowStoic] = useState(false);
     const [fearThreshold, setFearThreshold] = useState(25);
     const [greedThreshold, setGreedThreshold] = useState(75);
     const [fearMultiplier, setFearMultiplier] = useState(2.0);
@@ -278,6 +280,40 @@ export default function BacktestForm({ onSubmit, loading }: BacktestFormProps) {
                     </>
                 )}
             </button>
+
+            {/* Stoic Pattern Toggle */}
+            <div style={{ marginTop: 16 }}>
+                <button
+                    onClick={() => setShowStoic(!showStoic)}
+                    style={{
+                        width: "100%",
+                        background: "transparent",
+                        border: "1px solid var(--border-color)",
+                        borderRadius: 12,
+                        padding: "12px 16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        color: "var(--text-primary)",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--text-muted)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-color)")}
+                >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <BookOpen size={16} color="var(--purple)" />
+                        <span style={{ fontSize: 14, fontWeight: 600 }}>历史极度恐慌回测 (Stoic Pattern)</span>
+                    </div>
+                    {showStoic ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
+                </button>
+
+                {showStoic && (
+                    <div className="fade-in">
+                        <StoicCard isEmbedded />
+                    </div>
+                )}
+            </div>
         </div>
     );
 }

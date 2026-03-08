@@ -13,7 +13,6 @@ import ChatPanel from "@/components/chat/chat-panel";
 import StrategyAdvisor from "@/components/dashboard/strategy-advisor";
 import Ahr999Card from "@/components/dashboard/ahr999-card";
 import OnchainCard from "@/components/dashboard/onchain-card";
-import StoicCard from "@/components/dashboard/stoic-card";
 import UsdtSentimentCard from "@/components/dashboard/usdt-sentiment-card";
 import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import EtfFlowCard from "@/components/dashboard/etf-flow-card";
@@ -218,12 +217,11 @@ export default function DashboardClient() {
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(3, 1fr)",
+                        gridTemplateColumns: "1fr 1fr",
                         gap: 16,
                         marginBottom: 24,
                     }}
                 >
-                    <StoicCard />
                     <UsdtSentimentCard />
                     <EtfFlowCard />
                 </div>

@@ -10,7 +10,7 @@ interface StoicData {
     timestamp: number;
 }
 
-export default function StoicCard() {
+export default function StoicCard({ isEmbedded = false }: { isEmbedded?: boolean }) {
     const [data, setData] = useState<StoicData | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -35,7 +35,7 @@ export default function StoicCard() {
 
     if (loading) {
         return (
-            <div className="card" style={{ minHeight: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div className={isEmbedded ? "" : "card"} style={{ minHeight: 180, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 <div style={{ color: "var(--text-muted)", fontSize: 13 }}>回溯斯多葛历史时刻中...</div>
             </div>
         );
@@ -43,14 +43,14 @@ export default function StoicCard() {
 
     if (!data || !data.events.length) {
         return (
-            <div className="card" style={{ minHeight: 180 }}>
+            <div className={isEmbedded ? "" : "card"} style={{ minHeight: 180 }}>
                 <div style={{ color: "var(--red)", fontSize: 13 }}>未能获取历史回测数据</div>
             </div>
         );
     }
 
     return (
-        <div className="card" style={{ gridColumn: "1 / -1" }}>
+        <div className={isEmbedded ? "" : "card"} style={isEmbedded ? { marginTop: 16, paddingTop: 16, borderTop: "1px dashed var(--border-color)" } : { gridColumn: "1 / -1" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <div style={{ background: "rgba(168, 85, 247, 0.15)", padding: 6, borderRadius: 8 }}>
                     <BookOpen size={18} color="#a855f7" />

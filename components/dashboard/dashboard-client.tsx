@@ -176,41 +176,41 @@ export default function DashboardClient() {
                     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}><TradingDiary /></div>
                 </div>
 
-                {/* Row 2: Live Market Stats */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
+                {/* Row 2: Core Indicators (Compact Metric Cards) */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
                     <PriceCard />
                     <FGICard />
                     <Ahr999Card />
-                </div>
-
-                {/* Row 3: Advanced Sentiment & Onchain */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24 }}>
-                    <OnchainCard />
-                    <UsdtSentimentCard />
                     <MvrvCard />
                 </div>
 
-                {/* Row 4: AI Advisors & Macro Liquidity */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                    <StrategyAdvisor />
+                {/* Row 3: Detailed Analysis (Medium Text/List Cards) */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
                     <MacroLiquidityCard />
+                    <StrategyAdvisor />
+                    <OnchainCard />
                 </div>
 
-                {/* Row 5: Charts & Flows */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
+                {/* Row 4: Flow & Sentiment Charts (Wide Chart Cards) */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
+                    <UsdtSentimentCard />
                     <EtfFlowCard />
-                    {macro?.retailSentiment?.timeline && (
-                        <TrendsChart
-                            data={macro.retailSentiment.timeline}
-                            reddit={macro.retailSentiment.reddit}
-                        />
-                    )}
                 </div>
 
-                {/* Row 6: Tools (Alerts & Backtest) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-                    <PriceAlertCard />
-                    <BacktestForm onSubmit={handleBacktest} loading={loading} />
+                {/* Row 5: Long Charts & Actionable Tools */}
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        {macro?.retailSentiment?.timeline && (
+                            <TrendsChart
+                                data={macro.retailSentiment.timeline}
+                                reddit={macro.retailSentiment.reddit}
+                            />
+                        )}
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16, height: "100%" }}>
+                        <PriceAlertCard />
+                        <BacktestForm onSubmit={handleBacktest} loading={loading} />
+                    </div>
                 </div>
 
                 {/* Results */}

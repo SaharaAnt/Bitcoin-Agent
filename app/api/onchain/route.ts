@@ -15,6 +15,8 @@ export async function GET() {
         const liquidations = await getMockedLiquidations(fgi.value, btc.change24h);
 
         return NextResponse.json({
+            btc,
+            fgi,
             mempool,
             liquidations,
             timestamp: Date.now(),

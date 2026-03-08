@@ -229,6 +229,11 @@ export default function DashboardClient() {
                     <MvrvCard />
                 </div>
 
+                {/* Price Alerts Section */}
+                <div style={{ marginBottom: 24 }}>
+                    <PriceAlertCard />
+                </div>
+
                 {/* Backtest Section */}
                 <div
                     style={{

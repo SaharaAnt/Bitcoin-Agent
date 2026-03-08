@@ -12,7 +12,8 @@ interface Alert {
     triggeredAt?: string;
 }
 
-export default function PriceAlertCard({ currentBtcPrice }: { currentBtcPrice: number }) {
+export default function PriceAlertCard() {
+    const [currentBtcPrice, setCurrentBtcPrice] = useState<number | null>(null);
     const [alerts, setAlerts] = useState<Alert[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -34,8 +35,21 @@ export default function PriceAlertCard({ currentBtcPrice }: { currentBtcPrice: n
         }
     };
 
+    const fetchPrice = async () => {
+        try {
+            const res = await fetch("/api/onchain");
+            if (res.ok) {
+                const data = await res.json();
+                setCurrentBtcPrice(data.btc.price);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     useEffect(() => {
         fetchAlerts();
+        fetchPrice();
     }, []);
 
     // Form handlers

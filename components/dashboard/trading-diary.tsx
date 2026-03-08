@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, AlertCircle, PlusCircle, Frown, Smile, ShieldAlert } from "lucide-react";
+import { BookOpen, AlertCircle, PlusCircle, Frown, Smile, ShieldAlert, ChevronDown, ChevronUp } from "lucide-react";
 
 interface TradeJournal {
     id: string;
@@ -19,6 +19,7 @@ export default function TradingDiary() {
     const [journals, setJournals] = useState<TradeJournal[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [showAll, setShowAll] = useState(false);
 
     // Form states
     const [action, setAction] = useState<"BUY" | "SELL" | "HOLD">("HOLD");
@@ -183,62 +184,88 @@ export default function TradingDiary() {
                         还没有写过日记，开始你的斯多葛实践吧。
                     </div>
                 ) : (
-                    journals.map(journal => (
-                        <div key={journal.id} className="card" style={{ padding: 16 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, borderBottom: "1px solid #2a2a3e", paddingBottom: 12 }}>
-                                <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                                    <span style={{
-                                        padding: "4px 8px",
-                                        borderRadius: 4,
-                                        fontSize: 11,
-                                        fontWeight: 700,
-                                        background: journal.action === "BUY" ? "rgba(16, 185, 129, 0.1)" : journal.action === "SELL" ? "rgba(239, 68, 68, 0.1)" : "rgba(136, 136, 160, 0.1)",
-                                        color: journal.action === "BUY" ? "#10b981" : journal.action === "SELL" ? "#ef4444" : "#8888a0"
-                                    }}>
-                                        {journal.action}
-                                    </span>
-                                    <span style={{ fontSize: 12, color: "#888" }}>
-                                        {new Date(journal.createdAt).toLocaleDateString()}
-                                    </span>
+                    <>
+                        {journals.slice(0, showAll ? journals.length : 1).map((journal) => (
+                            <div key={journal.id} className="card" style={{ padding: 16 }}>
+                                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12, borderBottom: "1px solid #2a2a3e", paddingBottom: 12 }}>
+                                    <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                                        <span style={{
+                                            padding: "4px 8px",
+                                            borderRadius: 4,
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            background: journal.action === "BUY" ? "rgba(16, 185, 129, 0.1)" : journal.action === "SELL" ? "rgba(239, 68, 68, 0.1)" : "rgba(136, 136, 160, 0.1)",
+                                            color: journal.action === "BUY" ? "#10b981" : journal.action === "SELL" ? "#ef4444" : "#8888a0"
+                                        }}>
+                                            {journal.action}
+                                        </span>
+                                        <span style={{ fontSize: 12, color: "#888" }}>
+                                            {new Date(journal.createdAt).toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    {journal.auditScore && (
+                                        <div style={{
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 6,
+                                            color: getScoreColor(journal.auditScore),
+                                            fontSize: 13,
+                                            fontWeight: 600
+                                        }}>
+                                            {getScoreIcon(journal.auditScore)}
+                                            纪律分: {journal.auditScore}/100
+                                        </div>
+                                    )}
                                 </div>
-                                {journal.auditScore && (
+
+                                <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 12, lineHeight: 1.5 }}>
+                                    <span style={{ color: "#888", marginRight: 8 }}>你的想法:</span>
+                                    {journal.notes}
+                                </div>
+
+                                {journal.auditFeedback && (
                                     <div style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 6,
-                                        color: getScoreColor(journal.auditScore),
+                                        padding: 12,
+                                        background: "rgba(247, 147, 26, 0.05)",
+                                        borderLeft: "3px solid var(--btc-orange)",
+                                        borderRadius: "0 8px 8px 0",
                                         fontSize: 13,
-                                        fontWeight: 600
+                                        color: "var(--text)",
+                                        lineHeight: 1.6
                                     }}>
-                                        {getScoreIcon(journal.auditScore)}
-                                        纪律分: {journal.auditScore}/100
+                                        <span style={{ color: "var(--btc-orange)", fontWeight: 600, display: "block", marginBottom: 4 }}>
+                                            Agent 晚课点评:
+                                        </span>
+                                        {journal.auditFeedback}
                                     </div>
                                 )}
                             </div>
-
-                            <div style={{ fontSize: 14, color: "var(--text)", marginBottom: 12, lineHeight: 1.5 }}>
-                                <span style={{ color: "#888", marginRight: 8 }}>你的想法:</span>
-                                {journal.notes}
-                            </div>
-
-                            {journal.auditFeedback && (
-                                <div style={{
-                                    padding: 12,
-                                    background: "rgba(247, 147, 26, 0.05)",
-                                    borderLeft: "3px solid var(--btc-orange)",
-                                    borderRadius: "0 8px 8px 0",
-                                    fontSize: 13,
-                                    color: "var(--text)",
-                                    lineHeight: 1.6
-                                }}>
-                                    <span style={{ color: "var(--btc-orange)", fontWeight: 600, display: "block", marginBottom: 4 }}>
-                                        Agent 晚课点评:
-                                    </span>
-                                    {journal.auditFeedback}
-                                </div>
-                            )}
-                        </div>
-                    ))
+                        ))}
+                        {journals.length > 1 && (
+                            <button
+                                onClick={() => setShowAll(!showAll)}
+                                style={{
+                                    background: "transparent",
+                                    border: "1px dashed #2a2a3e",
+                                    color: "#888",
+                                    padding: "8px",
+                                    borderRadius: 8,
+                                    cursor: "pointer",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: 6,
+                                    fontSize: 12,
+                                    marginTop: 4,
+                                    transition: "all 0.2s"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = "var(--btc-orange)"}
+                                onMouseLeave={(e) => e.currentTarget.style.color = "#888"}
+                            >
+                                {showAll ? <><ChevronUp size={14} /> 收起历史</> : <><ChevronDown size={14} /> 展开全部 ({journals.length})</>}
+                            </button>
+                        )}
+                    </>
                 )}
             </div>
         </div>

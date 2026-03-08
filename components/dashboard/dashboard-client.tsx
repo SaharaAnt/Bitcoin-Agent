@@ -16,6 +16,7 @@ import OnchainCard from "@/components/dashboard/onchain-card";
 import UsdtSentimentCard from "@/components/dashboard/usdt-sentiment-card";
 import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import EtfFlowCard from "@/components/dashboard/etf-flow-card";
+import MvrvCard from "@/components/dashboard/mvrv-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
@@ -217,13 +218,14 @@ export default function DashboardClient() {
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
+                        gridTemplateColumns: "repeat(3, 1fr)",
                         gap: 16,
                         marginBottom: 24,
                     }}
                 >
                     <UsdtSentimentCard />
                     <EtfFlowCard />
+                    <MvrvCard />
                 </div>
 
                 {/* Backtest Section */}

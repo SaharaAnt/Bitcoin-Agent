@@ -9,6 +9,7 @@ import { getNetworkCongestionStatus } from "../api/mempool";
 import { getMockedLiquidations } from "../api/liquidations";
 import type { Frequency } from "../engine/types";
 import etfData from "../data/farside-data.json";
+import { getMvrvData } from "../api/mvrv";
 
 export const agentTools = {
     runDCABacktest: tool({
@@ -300,6 +301,33 @@ export const agentTools = {
             } catch (err) {
                 console.error("Agent error reading ETF data:", err);
                 return { error: "无法获取最新的 ETF 资金流向数据。" };
+            }
+        },
+    }),
+
+    getMvrvData: tool({
+        description:
+            "获取比特币 MVRV Z-Score 链上指标。MVRV Z-Score 是判断比特币牛熊周期位置最重要的指标之一，可显示当前估值相对历史成本基础的偏离程度。",
+        inputSchema: z.object({}),
+        execute: async () => {
+            try {
+                const data = await getMvrvData();
+                return {
+                    zScore: data.zScore,
+                    mvrv: `${data.mvrv.toFixed(2)}x`,
+                    zone: data.zoneLabel,
+                    marketCap: `$${(data.marketCap / 1e9).toFixed(0)}B`,
+                    realizedCap: `$${(data.realizedCap / 1e9).toFixed(0)}B`,
+                    interpretation: data.description,
+                    signal: data.zone === "top" || data.zone === "high"
+                        ? "减少定投，注意高估风险"
+                        : data.zone === "bottom" || data.zone === "low"
+                            ? "适合加仓，历史上高胜率区间"
+                            : "正常定投节奏",
+                };
+            } catch (err) {
+                console.error("Agent error fetching MVRV data:", err);
+                return { error: "无法获取 MVRV Z-Score 数据。" };
             }
         },
     }),

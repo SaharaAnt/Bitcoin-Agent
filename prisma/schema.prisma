@@ -16,6 +16,7 @@ model User {
   backtests      Backtest[]
   sessions       Session[]
   tradeJournals  TradeJournal[]
+  alerts         Alert[]
 }
 
 model Session {
@@ -64,4 +65,15 @@ model DailyBriefing {
   content   String   @db.Text // AI generated Stoic analysis (Markdown)
   isExtreme Boolean  // Was this flagged as an extreme market condition?
   createdAt DateTime @default(now())
+}
+
+model Alert {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetPrice Float
+  type        String    // "ABOVE" | "BELOW"
+  status      String    @default("ACTIVE") // "ACTIVE" | "TRIGGERED" | "CANCELLED"
+  timestamp   DateTime  @default(now()) // When the alert was created
+  triggeredAt DateTime? // When the alert fired
 }

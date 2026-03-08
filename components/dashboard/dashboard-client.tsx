@@ -17,6 +17,7 @@ import UsdtSentimentCard from "@/components/dashboard/usdt-sentiment-card";
 import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import EtfFlowCard from "@/components/dashboard/etf-flow-card";
 import MvrvCard from "@/components/dashboard/mvrv-card";
+import PriceAlertCard from "@/components/dashboard/price-alert-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";

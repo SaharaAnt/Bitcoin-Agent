@@ -78,14 +78,21 @@ export default function EtfFlowCard() {
 
     if (!data) return null;
 
-    const { metrics, latestDay, history14d } = data;
+    const { metrics, latestDay, history14d, lastUpdated } = data as any;
     const isOverallPositive = metrics.totalNetInflowM > 0;
+    
+    // Find the latest day with non-zero flow if the very last one is zero (pending)
+    const displayDay = latestDay.flow !== 0 ? latestDay : (data.history14d.filter(d => d.total !== 0).slice(-1)[0] || latestDay);
+    const displayDate = displayDay.date || latestDay.date;
+    const displayFlowM = displayDay.totalM || latestDay.flowM;
+    const isPositive = displayDay.total > 0 || latestDay.isPositive;
 
     // Custom tool tip for chart
     const CustomTooltip = ({ active, payload, label }: any) => {
         if (active && payload && payload.length) {
             const val = payload[0].value;
-            const isPos = val >= 0;
+            const isPos = val > 0;
+            const isZero = val === 0;
             return (
                 <div style={{
                     background: "rgba(10, 10, 15, 0.95)",
@@ -99,9 +106,9 @@ export default function EtfFlowCard() {
                         margin: 0,
                         fontSize: 13,
                         fontWeight: 700,
-                        color: isPos ? "var(--green)" : "var(--red)"
+                        color: isZero ? "var(--text-muted)" : (isPos ? "var(--green)" : "var(--red)")
                     }}>
-                        {isPos ? "+" : ""}{val.toFixed(1)}M
+                        {isZero ? "数据加载中..." : `${isPos ? "+" : ""}${val.toFixed(1)}M`}
                     </p>
                 </div>
             );
@@ -126,7 +133,7 @@ export default function EtfFlowCard() {
                     </div>
                     <div>
                         <h2 style={{ fontSize: 15, fontWeight: 700, margin: "0 0 4px 0" }}>比特币现货 ETF</h2>
-                        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
                             累计净流入: <span style={{
                                 color: isOverallPositive ? "var(--green)" : "var(--red)",
                                 fontWeight: 700
@@ -139,17 +146,17 @@ export default function EtfFlowCard() {
 
                 <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 4 }}>
-                        {latestDay.date}
+                        {displayDate} {latestDay.flow === 0 && <span style={{ opacity: 0.6 }}>(最新数据待更新)</span>}
                     </div>
                     <div style={{
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
-                        color: latestDay.isPositive ? "var(--green)" : "var(--red)"
+                        color: displayDay.flow === 0 ? "var(--text-muted)" : (isPositive ? "var(--green)" : "var(--red)")
                     }}>
-                        {latestDay.isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+                        {displayDay.flow === 0 ? null : (isPositive ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />)}
                         <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "var(--font-mono)" }}>
-                            {Math.abs(latestDay.flowM).toFixed(1)}M
+                            {displayDay.flow === 0 ? "WAITING" : `${Math.abs(displayFlowM).toFixed(1)}M`}
                         </span>
                     </div>
                 </div>
@@ -159,11 +166,17 @@ export default function EtfFlowCard() {
                 background: "rgba(255, 255, 255, 0.02)",
                 border: "1px solid rgba(255, 255, 255, 0.03)",
                 borderRadius: 12,
-                padding: "16px 12px 0 12px",
-                height: 140
+                padding: "16px 12px 12px 12px",
+                height: 140,
+                position: "relative"
             }}>
-                <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, paddingLeft: 4 }}>
-                    近14日资金流向 (百万美元)
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, paddingLeft: 4 }}>
+                    <span>近14日资金流向 (百万美元)</span>
+                    {lastUpdated && (
+                        <span style={{ fontSize: 10, opacity: 0.5 }}>
+                            更新于: {new Date(lastUpdated).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
                 </div>
                 <ResponsiveContainer width="100%" height={90}>
                     <BarChart data={history14d} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
@@ -176,7 +189,7 @@ export default function EtfFlowCard() {
                             cursor={{ fill: "rgba(255, 255, 255, 0.05)" }}
                         />
                         <Bar dataKey="totalM" radius={[4, 4, 4, 4]}>
-                            {history14d.map((entry, index) => (
+                            {history14d.map((entry: any, index: number) => (
                                 <Cell key={`cell-${index}`} fill={entry.totalM >= 0 ? "#10b981" : "#ef4444"} />
                             ))}
                         </Bar>

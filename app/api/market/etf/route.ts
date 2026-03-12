@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import etfData from "@/lib/data/farside-data.json";
+import fs from "fs";
+import path from "path";
 
 export async function GET() {
     try {
-        const data: { date: string; total: number }[] = etfData;
+        const dataPath = path.join(process.cwd(), "lib/data/farside-data.json");
+        let lastUpdated = null;
+        try {
+            const stats = fs.statSync(dataPath);
+            lastUpdated = stats.mtime.toISOString();
+        } catch (e) {
+            console.error("Failed to get file stats:", e);
+        }
+
+        const data: { date: string; total: number } [] = etfData;
 
         if (!data || data.length === 0) {
             return NextResponse.json({ error: "No data available" }, { status: 404 });
@@ -55,6 +66,7 @@ export async function GET() {
                 isPositive: previousDay.total > 0,
             },
             history14d: latest14Days,
+            lastUpdated,
             // Provide recent 5 days for text agents
             recent5Days: validData.slice(-5).map(d => ({ date: d.date, totalM: d.total / 1_000_000 })),
         });

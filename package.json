@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "update:etf": "npx ts-node scripts/update-farside.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.30",

@@ -6,12 +6,17 @@ on:
     - cron: '0 0 * * *'
   workflow_dispatch: # Allow manual trigger
 
+permissions:
+  contents: write
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Fetch all history for proper git checks
         
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -26,11 +31,22 @@ jobs:
         run: npx puppeteer browsers install chrome
         
       - name: Run ETF Scraper
-        run: npx tsx scripts/update-farside.ts
+        run: npm run update:etf
         
+      - name: Upload Debug Artifacts on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-debug-data
+          path: |
+            error-*.png
+            temp-debug-farside.html
+          retention-days: 5
+          
       - name: Check for changes
         id: git-check
         run: |
+          git status
           git diff --exit-code lib/data/farside-data.json || echo "changed=true" >> $GITHUB_OUTPUT
           
       - name: Commit and Push changes
@@ -41,3 +57,4 @@ jobs:
           git add lib/data/farside-data.json
           git commit -m "chore: daily update of ETF flows data"
           git push
+

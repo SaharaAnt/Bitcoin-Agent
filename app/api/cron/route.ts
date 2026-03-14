@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { generateText } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
 import { getBtcCurrentPrice, get60DMA } from "@/lib/api/coingecko";
 import { getFearGreedCurrent } from "@/lib/api/fear-greed";
 import { getNetworkCongestionStatus } from "@/lib/api/mempool";
@@ -11,26 +10,18 @@ import { analyzeMacroLiquidity } from "@/lib/engine/macro-advisor";
 import { prisma } from "@/lib/prisma";
 import { sendAlertEmail, simpleMarkdownToHtml } from "@/lib/api/email";
 import etfData from "@/lib/data/farside-data.json";
+import { deepseekChatModel } from "@/lib/ai/deepseek";
+import { requireCronAuth, withApiHandler } from "@/lib/http/api";
 
 // Ensure Edge runtime is not used if Prisma isn't Edge-compatible in this setup, usually Node is fine for Cron.
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Allow up to 60 seconds on Vercel to prevent timeouts
 
-const deepseek = createOpenAI({
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-});
+export const GET = withApiHandler("cron", async (req: Request) => {
+    // 1. Cron Auth Verification
+    requireCronAuth(req);
 
-export async function GET(req: Request) {
-    try {
-        // 1. Cron Auth Verification
-        const authHeader = req.headers.get("authorization");
-        if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-            // return new Response("Unauthorized", { status: 401 }); // Commented out for easier local testing. Enable in prod!
-            console.warn("[cron] Warning: Missing or invalid CRON_SECRET");
-        }
-
-        console.log("[cron] Starting daily market briefing generation...");
+    console.log("[cron] Starting daily market briefing generation...");
 
         // 2. Fetch all real-time data
         const [btc, fgi, mempool, strategy, ahr, ma60, macro] = await Promise.all([
@@ -78,10 +69,10 @@ export async function GET(req: Request) {
 5. 保持沉稳、克制。分析要像华尔街量化对冲基金经理一样专业，精神要像古罗马斯多葛哲学家一样通透。
 `;
 
-        const { text: content } = await generateText({
-            model: deepseek.chat("deepseek-chat"),
-            prompt,
-        });
+    const { text: content } = await generateText({
+        model: deepseekChatModel("deepseek-chat"),
+        prompt,
+    });
 
         // 5. Save to Database
         const briefing = await prisma.dailyBriefing.create({
@@ -108,19 +99,11 @@ export async function GET(req: Request) {
         const emailRes = await sendAlertEmail({ subject, html: htmlContent });
         emailSent = emailRes.success;
 
-        return NextResponse.json({
-            success: true,
-            message: "Cron job executed successfully",
-            isExtreme,
-            emailSent,
-            briefingId: briefing.id,
-        });
-
-    } catch (error) {
-        console.error("[cron] Error:", error);
-        return NextResponse.json(
-            { success: false, error: "Cron execution failed", details: String(error) },
-            { status: 500 }
-        );
-    }
-}
+    return NextResponse.json({
+        success: true,
+        message: "Cron job executed successfully",
+        isExtreme,
+        emailSent,
+        briefingId: briefing.id,
+    });
+});

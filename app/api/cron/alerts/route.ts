@@ -2,22 +2,16 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getBtcCurrentPrice } from "@/lib/api/coingecko";
 import { sendAlertEmail, simpleMarkdownToHtml } from "@/lib/api/email";
+import { requireCronAuth, withApiHandler } from "@/lib/http/api";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // Usually fast, but give it time just in case
 
-export async function GET(req: Request) {
-    // 1. Verify Authorization
-    const authHeader = req.headers.get("authorization");
-    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`;
+export const GET = withApiHandler("cron-alerts", async (req: Request) => {
+    requireCronAuth(req);
 
-    if (!isCron) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    try {
-        // 2. Fetch current BTC price
-        const { price: currentPrice } = await getBtcCurrentPrice();
+    // 2. Fetch current BTC price
+    const { price: currentPrice } = await getBtcCurrentPrice();
 
         if (!currentPrice || currentPrice <= 0) {
             throw new Error("Invalid current price fetched");
@@ -81,14 +75,10 @@ export async function GET(req: Request) {
             }
         }
 
-        return NextResponse.json({
-            ok: true,
-            currentPrice,
-            alertsChecked: activeAlerts.length,
-            alertsTriggered: triggeredAlerts.length,
-        });
-    } catch (error) {
-        console.error("[CRON Alerts] Error processing price alerts:", error);
-        return NextResponse.json({ error: "Failed to process alerts" }, { status: 500 });
-    }
-}
+    return NextResponse.json({
+        ok: true,
+        currentPrice,
+        alertsChecked: activeAlerts.length,
+        alertsTriggered: triggeredAlerts.length,
+    });
+});

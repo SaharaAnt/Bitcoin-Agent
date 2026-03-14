@@ -1,14 +1,11 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText } from "ai";
-import { z } from "zod";
-import { auth } from "@/lib/auth";
+import { NextResponse } from "next/server";
+import { z } from "zod/v4";
 import { prisma } from "@/lib/prisma";
 import { analyzeMacroLiquidity } from "@/lib/engine/macro-advisor";
-
-const deepseek = createOpenAI({
-    baseURL: "https://api.deepseek.com",
-    apiKey: process.env.DEEPSEEK_API_KEY,
-});
+import { deepseekChatModel } from "@/lib/ai/deepseek";
+import { parseJsonFromLLM } from "@/lib/ai/llm-json";
+import { ApiError, parseJsonBody, requireUser, withApiHandler } from "@/lib/http/api";
 
 const AUDIT_SYSTEM_PROMPT = `
 你是一位秉持斯多葛哲学（Stoicism）的资深比特币投资者和心理教练。
@@ -29,15 +26,28 @@ const AUDIT_SYSTEM_PROMPT = `
    - 给出一两句具体的后续建议。
 `;
 
-export async function POST(req: Request) {
-    try {
-        const session = await auth();
-        if (!session?.user) {
-            return new Response("Unauthorized", { status: 401 });
-        }
+const auditBodySchema = z.object({
+    action: z.enum(["BUY", "SELL", "HOLD"]),
+    amount: z.number().nullable().optional(),
+    price: z.number().nullable().optional(),
+    fgi: z.number().nullable().optional(),
+    notes: z.string().optional().default(""),
+});
 
-        const body = await req.json();
-        const { action, amount, price, fgi, notes } = body;
+const auditResultSchema = z.object({
+    score: z.number(),
+    feedback: z.string(),
+});
+
+export const POST = withApiHandler("audit", async (req: Request) => {
+    const user = await requireUser();
+    const userId = (user as { id?: string }).id;
+    if (!userId) throw new ApiError(500, "Missing user id in session");
+
+    const { action, amount, price, fgi, notes } = await parseJsonBody(
+        req,
+        auditBodySchema
+    );
 
         // 获取最新的宏观流动性数据
         const macro = await analyzeMacroLiquidity();
@@ -64,78 +74,48 @@ export async function POST(req: Request) {
 `;
 
         const { text } = await generateText({
-            model: deepseek.chat("deepseek-chat"),
+            model: deepseekChatModel("deepseek-chat"),
             system: AUDIT_SYSTEM_PROMPT,
             prompt: userPrompt + "\n\n请严格返回以下格式的 JSON 字符串（不要包含额外的文字，用 ```json  ``` 括起来）：\n{\n  \"score\": 85,\n  \"feedback\": \"你的反馈内容\"\n}",
         });
 
-        // 尝试解析 JSON
-        let auditResult = { score: 50, feedback: "Agent 暂时无法提供详细的斯多葛审计，但请继续保持纪律。" };
-        try {
-            const jsonMatch = text.match(/```json\s*(\{[\s\S]*?\})\s*```/);
-            const jsonStr = jsonMatch ? jsonMatch[1] : text.trim();
-            const parsed = JSON.parse(jsonStr);
-            if (parsed.score && parsed.feedback) {
-                auditResult = {
-                    score: Number(parsed.score),
-                    feedback: String(parsed.feedback)
-                };
-            }
-        } catch (e) {
-            console.error("[audit] Failed to parse JSON from LLM:", text, e);
+        const parsedAudit = parseJsonFromLLM(text, auditResultSchema);
+        const auditResult = parsedAudit ?? {
+            score: 50,
+            feedback: "Agent 暂时无法提供详细的斯多葛审计，但请继续保持纪律。",
+        };
+
+        if (!parsedAudit) {
+            console.error("[audit] Failed to parse JSON from LLM:", text);
         }
 
         // Save to Database
         const entry = await prisma.tradeJournal.create({
             data: {
-                userId: session.user.id as string,
+                userId,
                 action,
-                amount: amount ? Number(amount) : null,
-                price: price ? Number(price) : null,
-                fgi: fgi ? Number(fgi) : null,
+                amount: amount ?? null,
+                price: price ?? null,
+                fgi: fgi ?? null,
                 notes,
                 auditScore: auditResult.score,
                 auditFeedback: auditResult.feedback,
             },
         });
 
-        return new Response(JSON.stringify(entry), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
+    return NextResponse.json(entry, { status: 200 });
+});
 
-    } catch (error) {
-        console.error("[audit] Error:", error);
-        return new Response(
-            JSON.stringify({ error: "Internal server error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-        );
-    }
-}
+export const GET = withApiHandler("audit:get", async () => {
+    const user = await requireUser();
+    const userId = (user as { id?: string }).id;
+    if (!userId) throw new ApiError(500, "Missing user id in session");
 
-export async function GET(req: Request) {
-    try {
-        const session = await auth();
-        if (!session?.user) {
-            return new Response("Unauthorized", { status: 401 });
-        }
+    const journals = await prisma.tradeJournal.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 20, // Only fetch the latest 20
+    });
 
-        const journals = await prisma.tradeJournal.findMany({
-            where: { userId: session.user.id },
-            orderBy: { createdAt: "desc" },
-            take: 20, // Only fetch the latest 20
-        });
-
-        return new Response(JSON.stringify(journals), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-        });
-
-    } catch (error) {
-        console.error("[audit/get] Error:", error);
-        return new Response(
-            JSON.stringify({ error: "Internal server error" }),
-            { status: 500, headers: { "Content-Type": "application/json" } }
-        );
-    }
-}
+    return NextResponse.json(journals, { status: 200 });
+});

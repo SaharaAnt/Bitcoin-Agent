@@ -1,3 +1,5 @@
+import { ProxyAgent } from "undici";
+
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 
 interface PricePoint {
@@ -24,7 +26,18 @@ async function fetchWithCache<T>(url: string, ttlMs = 60_000): Promise<T> {
         headers["x-cg-demo-api-key"] = apiKey;
     }
 
-    const res = await fetch(url, { headers });
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const fetchOptions: any = { headers };
+    
+    if (proxyUrl) {
+        try {
+            fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        } catch (e) {
+            console.warn("[coingecko] Failed to create ProxyAgent:", e);
+        }
+    }
+
+    const res = await fetch(url, fetchOptions);
     if (!res.ok) {
         throw new Error(`CoinGecko API error: ${res.status} ${res.statusText}`);
     }

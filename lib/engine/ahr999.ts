@@ -138,8 +138,15 @@ export async function calculateAhr999History(days = 365): Promise<Ahr999HistoryP
     const start = new Date(end.getTime() - (days + 220) * 24 * 60 * 60 * 1000);
     const targetStart = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
 
-    const prices = await getBtcDailyPrices(start, end);
-    if (prices.length < 210) return [];
+    let prices;
+    try {
+        prices = await getBtcDailyPrices(start, end);
+    } catch (err) {
+        console.warn("[ahr999] Failed to fetch history prices:", err);
+        return [];
+    }
+    
+    if (!prices || prices.length < 210) return [];
 
     const sorted = prices.sort((a, b) => a.timestamp - b.timestamp);
     const values = sorted.map((p) => p.price);

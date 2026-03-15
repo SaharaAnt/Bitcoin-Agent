@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Activity } from "lucide-react";
@@ -143,33 +143,48 @@ export default function Ahr999Card() {
                 title="Ahr999 详情"
                 subtitle="过去 365 天估值走势"
             >
-                <div style={{ height: 260 }}>
-                    <ResponsiveContainer>
-                        <LineChart
-                            data={sparkline.map((value, index) => ({
-                                day: index + 1,
-                                value,
-                            }))}
-                        >
-                            <XAxis dataKey="day" hide />
-                            <YAxis hide />
-                            <Tooltip
-                                contentStyle={{
-                                    background: "var(--bg-secondary)",
-                                    border: "1px solid var(--border-color)",
-                                    color: "var(--text-primary)",
-                                }}
-                            />
-                            <Line
-                                type="monotone"
-                                dataKey="value"
-                                stroke={zoneColor}
-                                dot={false}
-                                strokeWidth={2}
-                            />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                {historyValues.length > 0 ? (
+                    <div style={{ height: 260 }}>
+                        <ResponsiveContainer>
+                            <LineChart
+                                data={historyValues.map((value: number, index: number) => ({
+                                    day: index + 1,
+                                    value,
+                                }))}
+                            >
+                                <XAxis dataKey="day" hide />
+                                <YAxis hide />
+                                <Tooltip
+                                    contentStyle={{
+                                        background: "var(--bg-secondary)",
+                                        border: "1px solid var(--border-color)",
+                                        color: "var(--text-primary)",
+                                    }}
+                                />
+                                <Line
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke={zoneColor}
+                                    dot={false}
+                                    strokeWidth={2}
+                                />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <div
+                        style={{
+                            height: 260,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            color: "var(--text-muted)",
+                            fontSize: 14,
+                        }}
+                    >
+                        暂无历史数据 (API 限制或加载中)
+                    </div>
+                )}
             </DetailDrawer>
         </>
     );

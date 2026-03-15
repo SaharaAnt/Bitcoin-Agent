@@ -8,14 +8,15 @@ export async function GET(req: Request) {
             return new Response("Unauthorized", { status: 401 });
         }
 
-        const data = await calculateAhr999();
         const includeHistory = new URL(req.url).searchParams.get("history") === "1";
 
         if (!includeHistory) {
+            const data = await calculateAhr999();
             return Response.json(data);
         }
 
         const history = await calculateAhr999History(365);
+        const data = await calculateAhr999(history);
         return Response.json({ ...data, history });
     } catch (error) {
         console.error("[ahr999] Error:", error);

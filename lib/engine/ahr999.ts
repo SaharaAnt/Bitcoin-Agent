@@ -26,6 +26,7 @@ export interface Ahr999Data {
     expectedPrice: number;
     coinAgeDays: number;
     timestamp: string;
+    historyStatus?: "ok" | "failed" | "insufficient";
 }
 
 export interface Ahr999HistoryPoint {
@@ -50,7 +51,6 @@ function getExpectedPrice(coinAgeDays: number): number {
     return Math.pow(10, 5.84 * Math.log10(coinAgeDays) - 17.01);
 }
 
-
 async function fetchWithTimeout<T>(
     fn: () => Promise<T>,
     fallback: T,
@@ -70,8 +70,32 @@ async function fetchWithTimeout<T>(
     }
 }
 
-export async function calculateAhr999(): Promise<Ahr999Data> {
+export async function calculateAhr999(existingHistory?: Ahr999HistoryPoint[]): Promise<Ahr999Data> {
     const { get200DMA } = await import("../api/coingecko");
+
+    // Optimization: If we have history, use the last point as the current data
+    if (existingHistory && existingHistory.length > 0) {
+        const last = existingHistory[existingHistory.length - 1];
+        const now = new Date();
+        const lastDate = new Date(last.date);
+        
+        // If last point is from today or yesterday, it's good enough for the dashboard
+        if (now.getTime() - lastDate.getTime() < 24 * 60 * 60 * 1000 * 2) {
+            const coinAgeDays = getCoinAgeDays();
+            return {
+                value: last.value,
+                zone: last.zone,
+                zoneLabel: last.zoneLabel.replace("🌠", "🟢").replace("📈", "🟡").replace("🧊", "🔴"), // Fix emoji inconsistent
+                price: last.price,
+                ma200: last.ma200,
+                expectedPrice: last.expectedPrice,
+                coinAgeDays,
+                timestamp: now.toISOString(),
+                historyStatus: "ok"
+            };
+        }
+    }
+
     const [btcData, ma200] = await Promise.all([
         fetchWithTimeout(
             () => getBtcCurrentPrice(),
@@ -141,12 +165,16 @@ export async function calculateAhr999History(days = 365): Promise<Ahr999HistoryP
     let prices;
     try {
         prices = await getBtcDailyPrices(start, end);
+        console.log(`[ahr999] Fetched ${prices?.length} price points for history`);
     } catch (err) {
         console.warn("[ahr999] Failed to fetch history prices:", err);
         return [];
     }
     
-    if (!prices || prices.length < 210) return [];
+    if (!prices || prices.length < 210) {
+        console.warn(`[ahr999] Not enough price points for MA200 (need 210, got ${prices?.length})`);
+        return [];
+    }
 
     const sorted = prices.sort((a, b) => a.timestamp - b.timestamp);
     const values = sorted.map((p) => p.price);
@@ -155,6 +183,7 @@ export async function calculateAhr999History(days = 365): Promise<Ahr999HistoryP
     for (let i = 0; i < 200; i++) {
         sum += values[i];
     }
+    console.log(`[ahr999] Starting history calculation loop, sorted.length=${sorted.length}`);
 
     const history: Ahr999HistoryPoint[] = [];
     for (let i = 199; i < sorted.length; i++) {

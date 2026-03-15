@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -86,19 +86,15 @@ export default function StrategyAdvisor() {
         fetchAnalysis();
     }, [fetchAnalysis]);
 
-    const signalColor = analysis
-        ? SIGNAL_COLORS[analysis.signal] ?? "#eab308"
-        : "#666";
-    const signalBg = analysis
-        ? SIGNAL_BG[analysis.signal] ?? "rgba(234,179,8,0.1)"
-        : "transparent";
+    const signalColor = analysis ? SIGNAL_COLORS[analysis.signal] ?? "#eab308" : "#666";
+    const signalBg = analysis ? SIGNAL_BG[analysis.signal] ?? "rgba(234,179,8,0.1)" : "transparent";
 
     const TrendIcon =
         analysis?.fgi.trend === "falling"
             ? TrendingDown
             : analysis?.fgi.trend === "rising"
-                ? TrendingUp
-                : Minus;
+            ? TrendingUp
+            : Minus;
 
     return (
         <div
@@ -112,7 +108,6 @@ export default function StrategyAdvisor() {
                 overflow: "hidden",
             }}
         >
-            {/* Accent glow */}
             <div
                 style={{
                     position: "absolute",
@@ -124,7 +119,6 @@ export default function StrategyAdvisor() {
                 }}
             />
 
-            {/* Header */}
             <div
                 style={{
                     display: "flex",
@@ -135,13 +129,7 @@ export default function StrategyAdvisor() {
             >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Brain size={18} color={signalColor} />
-                    <h3
-                        style={{
-                            fontSize: 14,
-                            fontWeight: 700,
-                            color: "var(--text-primary)",
-                        }}
-                    >
+                    <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                         AI 策略建议
                     </h3>
                 </div>
@@ -172,7 +160,6 @@ export default function StrategyAdvisor() {
                 </button>
             </div>
 
-            {/* Loading */}
             {loading && !analysis && (
                 <div
                     style={{
@@ -203,18 +190,13 @@ export default function StrategyAdvisor() {
                         fontSize: 13,
                     }}
                 >
-                    <AlertTriangle
-                        size={20}
-                        style={{ margin: "0 auto 8px", display: "block" }}
-                    />
+                    <AlertTriangle size={20} style={{ margin: "0 auto 8px", display: "block" }} />
                     {error}
                 </div>
             )}
 
-            {/* Content */}
             {analysis && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                    {/* Signal badge */}
                     <div
                         style={{
                             background: signalBg,
@@ -227,23 +209,11 @@ export default function StrategyAdvisor() {
                         }}
                     >
                         <div>
-                            <div
-                                style={{
-                                    fontSize: 18,
-                                    fontWeight: 800,
-                                    color: signalColor,
-                                }}
-                            >
+                            <div style={{ fontSize: 18, fontWeight: 800, color: signalColor }}>
                                 {analysis.signalLabel}
                             </div>
-                            <div
-                                style={{
-                                    fontSize: 11,
-                                    color: "var(--text-muted)",
-                                    marginTop: 2,
-                                }}
-                            >
-                                置信度 {analysis.confidence}%
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                                置信度: {analysis.confidence}%
                             </div>
                         </div>
                         <div style={{ textAlign: "right" }}>
@@ -257,13 +227,7 @@ export default function StrategyAdvisor() {
                                 }}
                             >
                                 FGI
-                                <span
-                                    style={{
-                                        fontWeight: 700,
-                                        fontSize: 20,
-                                        color: signalColor,
-                                    }}
-                                >
+                                <span style={{ fontWeight: 700, fontSize: 20, color: signalColor }}>
                                     {analysis.fgi.value}
                                 </span>
                             </div>
@@ -278,12 +242,11 @@ export default function StrategyAdvisor() {
                                 }}
                             >
                                 <TrendIcon size={11} />
-                                7日均值 {analysis.fgi.avg7d}
+                                7日均值: {analysis.fgi.avg7d}
                             </div>
                         </div>
                     </div>
 
-                    {/* Suggested parameters */}
                     <div>
                         <div
                             style={{
@@ -308,10 +271,7 @@ export default function StrategyAdvisor() {
                         >
                             <ParamItem
                                 label="定投频率"
-                                value={
-                                    FREQ_LABELS[analysis.suggestion.frequency] ??
-                                    analysis.suggestion.frequency
-                                }
+                                value={FREQ_LABELS[analysis.suggestion.frequency] ?? analysis.suggestion.frequency}
                             />
                             <ParamItem
                                 label="恐惧阈值"
@@ -330,17 +290,53 @@ export default function StrategyAdvisor() {
                         </div>
                     </div>
 
-                    {/* Reasoning */}
                     <div>
                         <div
                             style={{
                                 fontSize: 12,
                                 fontWeight: 600,
                                 color: "var(--text-secondary)",
-                                marginBottom: 6,
+                                marginBottom: 8,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 4,
                             }}
                         >
-                            💡 分析理由
+                            <ChevronRight size={12} />
+                            触发条件 → 规则 → 行动
+                        </div>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 8,
+                                fontSize: 12,
+                            }}
+                        >
+                            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
+                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>触发条件</div>
+                                <div>FGI: {analysis.fgi.value}</div>
+                                <div>趋势: {analysis.fgi.trend}</div>
+                                <div>24h: {analysis.btc.change24h.toFixed(2)}%</div>
+                            </div>
+                            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
+                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>规则</div>
+                                <div>恐惧阈值: ≤ {analysis.suggestion.fearThreshold}</div>
+                                <div>贪婪阈值: ≥ {analysis.suggestion.greedThreshold}</div>
+                                <div>倍率: {analysis.suggestion.fearMultiplier}x / {analysis.suggestion.greedMultiplier}x</div>
+                            </div>
+                            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 8, padding: "10px 12px" }}>
+                                <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 6 }}>行动</div>
+                                <div>频率: {FREQ_LABELS[analysis.suggestion.frequency] ?? analysis.suggestion.frequency}</div>
+                                <div>信心: {analysis.confidence}%</div>
+                                <div>信号: {analysis.signalLabel}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>
+                            分析理由
                         </div>
                         <ul
                             style={{
@@ -357,7 +353,6 @@ export default function StrategyAdvisor() {
                         </ul>
                     </div>
 
-                    {/* BTC info bar */}
                     <div
                         style={{
                             display: "flex",
@@ -369,24 +364,17 @@ export default function StrategyAdvisor() {
                             fontSize: 12,
                         }}
                     >
-                        <span style={{ color: "var(--text-muted)" }}>
-                            BTC ${analysis.btc.price.toLocaleString()}
-                        </span>
+                        <span style={{ color: "var(--text-muted)" }}>BTC ${analysis.btc.price.toLocaleString()}</span>
                         <span
                             style={{
-                                color:
-                                    analysis.btc.change24h >= 0 ? "#4ade80" : "#ef4444",
+                                color: analysis.btc.change24h >= 0 ? "#4ade80" : "#ef4444",
                                 display: "flex",
                                 alignItems: "center",
                                 gap: 2,
                                 fontWeight: 600,
                             }}
                         >
-                            {analysis.btc.change24h >= 0 ? (
-                                <ArrowUp size={11} />
-                            ) : (
-                                <ArrowDown size={11} />
-                            )}
+                            {analysis.btc.change24h >= 0 ? <ArrowUp size={11} /> : <ArrowDown size={11} />}
                             {Math.abs(analysis.btc.change24h).toFixed(2)}%
                         </span>
                     </div>
@@ -417,30 +405,14 @@ function ParamItem({
             style={{
                 padding: "8px 10px",
                 borderRadius: 8,
-                background: highlight
-                    ? "rgba(249, 115, 22, 0.08)"
-                    : "rgba(255,255,255,0.03)",
-                border: highlight
-                    ? "1px solid rgba(249,115,22,0.2)"
-                    : "1px solid transparent",
+                background: highlight ? "rgba(249, 115, 22, 0.08)" : "rgba(255,255,255,0.03)",
+                border: highlight ? "1px solid rgba(249,115,22,0.2)" : "1px solid transparent",
             }}
         >
-            <div
-                style={{
-                    fontSize: 10,
-                    color: "var(--text-muted)",
-                    marginBottom: 2,
-                }}
-            >
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>
                 {label}
             </div>
-            <div
-                style={{
-                    fontSize: 14,
-                    fontWeight: 700,
-                    color: highlight ? "#f97316" : "var(--text-primary)",
-                }}
-            >
+            <div style={{ fontSize: 14, fontWeight: 700, color: highlight ? "#f97316" : "var(--text-primary)" }}>
                 {value}
             </div>
         </div>

@@ -1,9 +1,19 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Activity } from "lucide-react";
 import type { MvrvData } from "@/lib/api/mvrv";
 import IndicatorCard, { Sparkline } from "@/components/dashboard/indicator-card";
+import DetailDrawer from "@/components/dashboard/detail-drawer";
+import { useCachedJson } from "@/lib/hooks/use-cached-json";
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+} from "recharts";
 
 function formatCap(val: number): string {
     if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
@@ -12,31 +22,10 @@ function formatCap(val: number): string {
 }
 
 export default function MvrvCard() {
-    const [data, setData] = useState<MvrvData | null>(null);
-    const [history, setHistory] = useState<number[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const { data, loading, error } = useCachedJson<any>("/api/market/mvrv", 120_000);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await fetch("/api/market/mvrv");
-                if (!res.ok) throw new Error("Failed");
-                const json = await res.json();
-                setData(json);
-                if (Array.isArray(json.history)) {
-                    setHistory(json.history.map((h: { zScore: number }) => h.zScore));
-                }
-            } catch {
-                setError(true);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
-
-    if (loading) {
+    if (loading || !data) {
         return (
             <div className="card" style={{ minHeight: 180 }}>
                 <div style={{ color: "var(--text-muted)", fontSize: 13 }}>加载 MVRV...</div>
@@ -52,8 +41,10 @@ export default function MvrvCard() {
         );
     }
 
-    const historyMin = history.length ? Math.min(...history) : data.zScore;
-    const historyMax = history.length ? Math.max(...history) : data.zScore;
+    const mvrv = data as MvrvData;
+    const history = Array.isArray(data.history) ? data.history.map((h: { zScore: number }) => h.zScore) : [];
+    const historyMin = history.length ? Math.min(...history) : mvrv.zScore;
+    const historyMax = history.length ? Math.max(...history) : mvrv.zScore;
 
     const badge = (
         <span
@@ -65,51 +56,103 @@ export default function MvrvCard() {
                 fontWeight: 700,
                 padding: "4px 10px",
                 borderRadius: 8,
-                background: `${data.zoneColor}15`,
-                color: data.zoneColor,
+                background: `${mvrv.zoneColor}15`,
+                color: mvrv.zoneColor,
             }}
         >
             <Activity size={12} />
-            {data.zoneLabel}
+            {mvrv.zoneLabel}
         </span>
     );
 
-    const sparkline = Array.from({ length: 20 }, () => data.zScore);
+    const sparkline = Array.from({ length: 20 }, () => mvrv.zScore);
     const sparklineData = history.length ? history : sparkline;
 
     return (
-        <IndicatorCard
-            title="MVRV Z-Score"
-            subtitle="估值偏离度"
-            value={`${data.zScore > 0 ? "+" : ""}${data.zScore.toFixed(2)}`}
-            valueColor={data.zoneColor}
-            badge={badge}
-            sparklineData={sparklineData}
-            sparklineColor={data.zoneColor}
-            explanation={data.description}
-            footerItems={[
-                { label: "MVRV", value: `${data.mvrv.toFixed(2)}x` },
-                { label: "市值", value: formatCap(data.marketCap) },
-                { label: "实现市值", value: formatCap(data.realizedCap) },
-            ]}
-            details={
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <Sparkline data={sparklineData} stroke={data.zoneColor} height={80} strokeWidth={2} />
-                    <div
+        <>
+            <IndicatorCard
+                title="MVRV Z-Score"
+                subtitle="估值偏离度"
+                value={`${mvrv.zScore > 0 ? "+" : ""}${mvrv.zScore.toFixed(2)}`}
+                valueColor={mvrv.zoneColor}
+                badge={badge}
+                rightAction={
+                    <button
+                        onClick={() => setIsDrawerOpen(true)}
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr",
-                            gap: 8,
-                            fontSize: 12,
-                            color: "var(--text-secondary)",
+                            background: "transparent",
+                            color: "var(--text-muted)",
+                            border: "1px solid var(--border-color)",
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            cursor: "pointer",
                         }}
                     >
-                        <div>区间最低: {historyMin.toFixed(2)}</div>
-                        <div>区间最高: {historyMax.toFixed(2)}</div>
-                        <div>当前区间: {data.zoneLabel}</div>
+                        详情
+                    </button>
+                }
+                sparklineData={sparklineData}
+                sparklineColor={mvrv.zoneColor}
+                explanation={mvrv.description}
+                footerItems={[
+                    { label: "MVRV", value: `${mvrv.mvrv.toFixed(2)}x` },
+                    { label: "市值", value: formatCap(mvrv.marketCap) },
+                    { label: "实现市值", value: formatCap(mvrv.realizedCap) },
+                ]}
+                details={
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <Sparkline data={sparklineData} stroke={mvrv.zoneColor} height={80} strokeWidth={2} />
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 8,
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                            }}
+                        >
+                            <div>区间最低: {historyMin.toFixed(2)}</div>
+                            <div>区间最高: {historyMax.toFixed(2)}</div>
+                            <div>当前区间: {mvrv.zoneLabel}</div>
+                        </div>
                     </div>
+                }
+            />
+            <DetailDrawer
+                open={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                title="MVRV 详情"
+                subtitle="过去 2 年估值走势"
+            >
+                <div style={{ height: 260 }}>
+                    <ResponsiveContainer>
+                        <LineChart
+                            data={sparklineData.map((value, index) => ({
+                                day: index + 1,
+                                value,
+                            }))}
+                        >
+                            <XAxis dataKey="day" hide />
+                            <YAxis hide />
+                            <Tooltip
+                                contentStyle={{
+                                    background: "var(--bg-secondary)",
+                                    border: "1px solid var(--border-color)",
+                                    color: "var(--text-primary)",
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={mvrv.zoneColor}
+                                dot={false}
+                                strokeWidth={2}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
-            }
-        />
+            </DetailDrawer>
+        </>
     );
 }

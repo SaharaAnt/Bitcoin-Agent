@@ -1,8 +1,18 @@
-"use client";
+﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Activity } from "lucide-react";
 import IndicatorCard, { Sparkline } from "@/components/dashboard/indicator-card";
+import DetailDrawer from "@/components/dashboard/detail-drawer";
+import { useCachedJson } from "@/lib/hooks/use-cached-json";
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+} from "recharts";
 
 interface FGIData {
     value: number;
@@ -26,30 +36,13 @@ function getFGILabel(value: number): string {
 }
 
 export default function FGICard() {
-    const [data, setData] = useState<FGIData | null>(null);
-    const [history, setHistory] = useState<number[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const { data, loading, error } = useCachedJson<{
+        fgi?: FGIData;
+        fgiHistory?: number[];
+    }>("/api/market", 60_000);
 
-    useEffect(() => {
-        const fetchFGI = async () => {
-            try {
-                const res = await fetch("/api/market");
-                const json = await res.json();
-                setData(json.fgi);
-                if (Array.isArray(json.fgiHistory)) setHistory(json.fgiHistory);
-            } catch (err) {
-                console.error("Failed to fetch FGI:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchFGI();
-        const interval = setInterval(fetchFGI, 60000);
-        return () => clearInterval(interval);
-    }, []);
-
-    if (loading) {
+    if (loading || !data) {
         return (
             <div className="card" style={{ minHeight: 140 }}>
                 <div style={{ color: "var(--text-muted)", fontSize: 13 }}>加载中...</div>
@@ -57,20 +50,21 @@ export default function FGICard() {
         );
     }
 
-    if (!data) {
+    if (error || !data.fgi) {
         return (
             <div className="card" style={{ minHeight: 140 }}>
-                <div style={{ color: "var(--red)", fontSize: 13 }}>数据获取失败</div>
+                <div style={{ color: "var(--red)", fontSize: 13 }}>无法获取 FGI 数据</div>
             </div>
         );
     }
 
-    const color = getFGIColor(data.value);
-    const label = getFGILabel(data.value);
-    const historyMin = history.length ? Math.min(...history) : data.value;
-    const historyMax = history.length ? Math.max(...history) : data.value;
-    const historyAvg =
-        history.length ? history.reduce((s, v) => s + v, 0) / history.length : data.value;
+    const fgi = data.fgi;
+    const history = Array.isArray(data.fgiHistory) ? data.fgiHistory : [];
+    const color = getFGIColor(fgi.value);
+    const label = getFGILabel(fgi.value);
+    const historyMin = history.length ? Math.min(...history) : fgi.value;
+    const historyMax = history.length ? Math.max(...history) : fgi.value;
+    const historyAvg = history.length ? history.reduce((s, v) => s + v, 0) / history.length : fgi.value;
 
     const badge = (
         <span
@@ -92,37 +86,92 @@ export default function FGICard() {
     );
 
     return (
-        <IndicatorCard
-            title="恐惧与贪婪"
-            subtitle="市场情绪温度计"
-            value={`${data.value}`}
-            valueColor={color}
-            badge={badge}
-            sparklineData={history}
-            sparklineColor={color}
-            explanation="情绪指标过热或过冷往往意味着风险累积或机会浮现。"
-            footerItems={[
-                { label: "区间", value: label },
-                { label: "建议", value: data.value <= 25 ? "考虑加仓" : data.value >= 75 ? "注意减仓" : "正常定投" },
-            ]}
-            details={
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <Sparkline data={history} stroke={color} height={80} strokeWidth={2} />
-                    <div
+        <>
+            <IndicatorCard
+                title="恐惧与贪婪"
+                subtitle="市场情绪温度计"
+                value={`${fgi.value}`}
+                valueColor={color}
+                badge={badge}
+                rightAction={
+                    <button
+                        onClick={() => setIsDrawerOpen(true)}
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr",
-                            gap: 8,
-                            fontSize: 12,
-                            color: "var(--text-secondary)",
+                            background: "transparent",
+                            color: "var(--text-muted)",
+                            border: "1px solid var(--border-color)",
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            cursor: "pointer",
                         }}
                     >
-                        <div>30日均值: {historyAvg.toFixed(1)}</div>
-                        <div>30日最低: {historyMin}</div>
-                        <div>30日最高: {historyMax}</div>
+                        详情
+                    </button>
+                }
+                sparklineData={history}
+                sparklineColor={color}
+                explanation="情绪过热或过冷往往意味着风险累积或机会浮现。"
+                footerItems={[
+                    { label: "区间", value: label },
+                    {
+                        label: "建议",
+                        value: fgi.value <= 25 ? "考虑加仓" : fgi.value >= 75 ? "注意减仓" : "正常定投",
+                    },
+                ]}
+                details={
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <Sparkline data={history} stroke={color} height={80} strokeWidth={2} />
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 8,
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                            }}
+                        >
+                            <div>30日均值: {historyAvg.toFixed(1)}</div>
+                            <div>30日最低: {historyMin}</div>
+                            <div>30日最高: {historyMax}</div>
+                        </div>
                     </div>
+                }
+            />
+            <DetailDrawer
+                open={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                title="FGI 详情"
+                subtitle="过去 30 天情绪走势"
+            >
+                <div style={{ height: 260 }}>
+                    <ResponsiveContainer>
+                        <LineChart
+                            data={history.map((value, index) => ({
+                                day: index + 1,
+                                value,
+                            }))}
+                        >
+                            <XAxis dataKey="day" hide />
+                            <YAxis hide />
+                            <Tooltip
+                                contentStyle={{
+                                    background: "var(--bg-secondary)",
+                                    border: "1px solid var(--border-color)",
+                                    color: "var(--text-primary)",
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={color}
+                                dot={false}
+                                strokeWidth={2}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
-            }
-        />
+            </DetailDrawer>
+        </>
     );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Activity, Flame, Zap } from "lucide-react";
+import { useCachedJson } from "@/lib/hooks/use-cached-json";
 
 interface OnchainData {
     mempool: {
@@ -24,28 +24,7 @@ interface OnchainData {
 }
 
 export default function OnchainCard() {
-    const [data, setData] = useState<OnchainData | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchOnchain = async () => {
-            try {
-                const res = await fetch("/api/onchain");
-                if (res.ok) {
-                    const json = await res.json();
-                    setData(json);
-                }
-            } catch (err) {
-                console.error("Failed to fetch onchain data:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchOnchain();
-        const interval = setInterval(fetchOnchain, 120000); // 2 mins
-        return () => clearInterval(interval);
-    }, []);
+    const { data, loading } = useCachedJson<OnchainData>("/api/onchain", 120_000);
 
     if (loading) {
         return (

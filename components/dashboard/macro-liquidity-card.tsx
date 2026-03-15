@@ -1,29 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Activity, Droplets, TrendingDown, TrendingUp, AlertTriangle, Globe } from "lucide-react";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
+import { useCachedJson } from "@/lib/hooks/use-cached-json";
 
 export default function MacroLiquidityCard() {
-    const [macro, setMacro] = useState<MacroAnalysis | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        async function fetchMacro() {
-            try {
-                const res = await fetch("/api/macro");
-                if (res.ok) {
-                    const data = await res.json();
-                    setMacro(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch macro:", err);
-            } finally {
-                setLoading(false);
-            }
-        }
-        fetchMacro();
-    }, []);
+    const { data: macro, loading } = useCachedJson<MacroAnalysis>("/api/macro", 120_000);
 
     if (loading) {
         return (

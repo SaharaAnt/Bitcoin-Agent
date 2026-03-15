@@ -1,8 +1,18 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Activity } from "lucide-react";
 import IndicatorCard, { Sparkline } from "@/components/dashboard/indicator-card";
+import DetailDrawer from "@/components/dashboard/detail-drawer";
+import { useCachedJson } from "@/lib/hooks/use-cached-json";
+import {
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    Tooltip,
+} from "recharts";
 
 interface Ahr999Data {
     value: number;
@@ -31,23 +41,8 @@ const ZONE_EXPLANATION: Record<Ahr999Data["zone"], string> = {
 };
 
 export default function Ahr999Card() {
-    const [data, setData] = useState<Ahr999Data | null>(null);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const res = await fetch("/api/ahr999?history=1");
-                if (!res.ok) throw new Error("Failed");
-                setData(await res.json());
-            } catch (err) {
-                console.error("[ahr999-card]", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchData();
-    }, []);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const { data, loading, error } = useCachedJson<Ahr999Data>("/api/ahr999?history=1", 120_000);
 
     if (loading) {
         return (
@@ -57,7 +52,7 @@ export default function Ahr999Card() {
         );
     }
 
-    if (!data) {
+    if (error || !data) {
         return (
             <div className="card" style={{ minHeight: 180 }}>
                 <div style={{ color: "var(--red)", fontSize: 13 }}>无法获取 Ahr999 数据</div>
@@ -93,37 +88,89 @@ export default function Ahr999Card() {
     const historyMax = historyValues.length ? Math.max(...historyValues) : data.value;
 
     return (
-        <IndicatorCard
-            title="Ahr999 指标"
-            subtitle="估值区间信号"
-            value={data.value.toFixed(3)}
-            valueColor={zoneColor}
-            badge={badge}
-            sparklineData={sparkline}
-            sparklineColor={zoneColor}
-            explanation={ZONE_EXPLANATION[data.zone]}
-            footerItems={[
-                { label: "200日均价", value: `$${data.ma200.toLocaleString()}` },
-                { label: "模型估值", value: `$${data.expectedPrice.toLocaleString()}` },
-            ]}
-            details={
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <Sparkline data={sparkline} stroke={zoneColor} height={80} strokeWidth={2} />
-                    <div
+        <>
+            <IndicatorCard
+                title="Ahr999 指标"
+                subtitle="估值区间信号"
+                value={data.value.toFixed(3)}
+                valueColor={zoneColor}
+                badge={badge}
+                rightAction={
+                    <button
+                        onClick={() => setIsDrawerOpen(true)}
                         style={{
-                            display: "grid",
-                            gridTemplateColumns: "1fr 1fr 1fr",
-                            gap: 8,
-                            fontSize: 12,
-                            color: "var(--text-secondary)",
+                            background: "transparent",
+                            color: "var(--text-muted)",
+                            border: "1px solid var(--border-color)",
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            cursor: "pointer",
                         }}
                     >
-                        <div>区间最低: {historyMin.toFixed(3)}</div>
-                        <div>区间最高: {historyMax.toFixed(3)}</div>
-                        <div>当前区间: {data.zoneLabel}</div>
+                        详情
+                    </button>
+                }
+                sparklineData={sparkline}
+                sparklineColor={zoneColor}
+                explanation={ZONE_EXPLANATION[data.zone]}
+                footerItems={[
+                    { label: "200日均价", value: `$${data.ma200.toLocaleString()}` },
+                    { label: "模型估值", value: `$${data.expectedPrice.toLocaleString()}` },
+                ]}
+                details={
+                    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <Sparkline data={sparkline} stroke={zoneColor} height={80} strokeWidth={2} />
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 8,
+                                fontSize: 12,
+                                color: "var(--text-secondary)",
+                            }}
+                        >
+                            <div>区间最低: {historyMin.toFixed(3)}</div>
+                            <div>区间最高: {historyMax.toFixed(3)}</div>
+                            <div>当前区间: {data.zoneLabel}</div>
+                        </div>
                     </div>
+                }
+            />
+            <DetailDrawer
+                open={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                title="Ahr999 详情"
+                subtitle="过去 365 天估值走势"
+            >
+                <div style={{ height: 260 }}>
+                    <ResponsiveContainer>
+                        <LineChart
+                            data={sparkline.map((value, index) => ({
+                                day: index + 1,
+                                value,
+                            }))}
+                        >
+                            <XAxis dataKey="day" hide />
+                            <YAxis hide />
+                            <Tooltip
+                                contentStyle={{
+                                    background: "var(--bg-secondary)",
+                                    border: "1px solid var(--border-color)",
+                                    color: "var(--text-primary)",
+                                }}
+                            />
+                            <Line
+                                type="monotone"
+                                dataKey="value"
+                                stroke={zoneColor}
+                                dot={false}
+                                strokeWidth={2}
+                            />
+                        </LineChart>
+                    </ResponsiveContainer>
                 </div>
-            }
-        />
+            </DetailDrawer>
+        </>
     );
 }

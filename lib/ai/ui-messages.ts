@@ -1,4 +1,4 @@
-export type ModelMessage = { role: string; content: string };
+﻿import type { ModelMessage } from "ai";
 
 type UiTextPart = { type: "text"; text: string };
 
@@ -34,11 +34,13 @@ export function uiMessagesToModelMessages(input: unknown): ModelMessage[] {
   if (!Array.isArray(input)) return [];
 
   return (input as UiMessageLike[]).map((msg) => {
-    const role = typeof msg.role === "string" ? msg.role : String(msg.role ?? "");
+    const role =
+      msg.role === "user" || msg.role === "assistant" || msg.role === "system"
+        ? msg.role
+        : "user";
     const content =
       typeof msg.content === "string" ? msg.content : textFromParts(msg.parts);
 
     return { role, content };
   });
 }
-

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Activity } from "lucide-react";
+import IndicatorCard, { Sparkline } from "@/components/dashboard/indicator-card";
 
 interface FGIData {
     value: number;
@@ -26,11 +27,8 @@ function getFGILabel(value: number): string {
 
 export default function FGICard() {
     const [data, setData] = useState<FGIData | null>(null);
+    const [history, setHistory] = useState<number[]>([]);
     const [loading, setLoading] = useState(true);
-
-    // Dip Action State
-    const [dipResult, setDipResult] = useState<any>(null);
-    const [isDipLoading, setIsDipLoading] = useState(false);
 
     useEffect(() => {
         const fetchFGI = async () => {
@@ -38,6 +36,7 @@ export default function FGICard() {
                 const res = await fetch("/api/market");
                 const json = await res.json();
                 setData(json.fgi);
+                if (Array.isArray(json.fgiHistory)) setHistory(json.fgiHistory);
             } catch (err) {
                 console.error("Failed to fetch FGI:", err);
             } finally {
@@ -66,140 +65,64 @@ export default function FGICard() {
         );
     }
 
-    const handleBuyTheDip = async () => {
-        setIsDipLoading(true);
-        setDipResult(null);
-        try {
-            const res = await fetch("/api/dip", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ availableFiat: 1000, baseAmount: 100 }) // Demo values
-            });
-            const result = await res.json();
-            setDipResult(result.action);
-        } catch (error) {
-            console.error("Failed to calculate dip:", error);
-        } finally {
-            setIsDipLoading(false);
-        }
-    };
-
     const color = getFGIColor(data.value);
     const label = getFGILabel(data.value);
-    const percentage = data.value;
+    const historyMin = history.length ? Math.min(...history) : data.value;
+    const historyMax = history.length ? Math.max(...history) : data.value;
+    const historyAvg =
+        history.length ? history.reduce((s, v) => s + v, 0) / history.length : data.value;
+
+    const badge = (
+        <span
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                fontSize: 12,
+                fontWeight: 700,
+                padding: "4px 10px",
+                borderRadius: 8,
+                background: `${color}15`,
+                color,
+            }}
+        >
+            <Activity size={12} />
+            {label}
+        </span>
+    );
 
     return (
-        <div className="card">
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: 12,
-                }}
-            >
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                    <Activity
-                        size={12}
-                        style={{ marginRight: 4, verticalAlign: -1 }}
-                    />
-                    恐惧贪婪指数
-                </span>
-                <span
-                    style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        padding: "4px 10px",
-                        borderRadius: 8,
-                        color,
-                        background: `${color}15`,
-                    }}
-                >
-                    {label}
-                </span>
-            </div>
-
-            <div className="stat-value" style={{ color, marginBottom: 12 }}>
-                {data.value}
-            </div>
-
-            {/* Progress bar */}
-            <div
-                style={{
-                    height: 6,
-                    background: "var(--bg-secondary)",
-                    borderRadius: 3,
-                    overflow: "hidden",
-                }}
-            >
-                <div
-                    style={{
-                        width: `${percentage}%`,
-                        height: "100%",
-                        background: `linear-gradient(90deg, var(--fear-green), #ffc107, var(--greed-red))`,
-                        borderRadius: 3,
-                        transition: "width 1s ease",
-                    }}
-                />
-            </div>
-
-            <div
-                style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginTop: 6,
-                    fontSize: 11,
-                    color: "var(--text-muted)",
-                }}
-            >
-                <span>极度恐惧</span>
-                <span>极度贪婪</span>
-            </div>
-
-            {/* Buy The Dip Section */}
-            <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border-color)" }}>
-                <button
-                    onClick={handleBuyTheDip}
-                    disabled={isDipLoading}
-                    style={{
-                        width: "100%",
-                        padding: "10px",
-                        background: isDipLoading ? "var(--bg-secondary)" : "var(--primary)",
-                        color: isDipLoading ? "var(--text-muted)" : "white",
-                        border: "none",
-                        borderRadius: 8,
-                        fontWeight: 600,
-                        cursor: isDipLoading ? "not-allowed" : "pointer",
-                        transition: "background 0.2s",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        gap: 8,
-                    }}
-                >
-                    {isDipLoading ? "计算最佳策略中..." : "一键防跌加仓引擎"}
-                </button>
-
-                {dipResult && (
-                    <div style={{
-                        marginTop: 12,
-                        padding: 12,
-                        background: "var(--bg-secondary)",
-                        borderRadius: 8,
-                        fontSize: 13,
-                        border: dipResult.action === "BUY" ? "1px solid var(--fear-green)" : "1px solid transparent"
-                    }}>
-                        <div style={{ fontWeight: 600, marginBottom: 8, color: dipResult.action === "BUY" ? "var(--fear-green)" : "var(--text-primary)" }}>
-                            策略建议: {dipResult.action === "BUY" ? `买入 $${dipResult.recommendedAmount}` : dipResult.action}
-                        </div>
-                        <ul style={{ margin: 0, paddingLeft: 16, color: "var(--text-secondary)", display: "flex", flexDirection: "column", gap: 4 }}>
-                            {dipResult.reasoning.map((reason: string, i: number) => (
-                                <li key={i}>{reason}</li>
-                            ))}
-                        </ul>
+        <IndicatorCard
+            title="恐惧与贪婪"
+            subtitle="市场情绪温度计"
+            value={`${data.value}`}
+            valueColor={color}
+            badge={badge}
+            sparklineData={history}
+            sparklineColor={color}
+            explanation="情绪指标过热或过冷往往意味着风险累积或机会浮现。"
+            footerItems={[
+                { label: "区间", value: label },
+                { label: "建议", value: data.value <= 25 ? "考虑加仓" : data.value >= 75 ? "注意减仓" : "正常定投" },
+            ]}
+            details={
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    <Sparkline data={history} stroke={color} height={80} strokeWidth={2} />
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns: "1fr 1fr 1fr",
+                            gap: 8,
+                            fontSize: 12,
+                            color: "var(--text-secondary)",
+                        }}
+                    >
+                        <div>30日均值: {historyAvg.toFixed(1)}</div>
+                        <div>30日最低: {historyMin}</div>
+                        <div>30日最高: {historyMax}</div>
                     </div>
-                )}
-            </div>
-        </div>
+                </div>
+            }
+        />
     );
 }

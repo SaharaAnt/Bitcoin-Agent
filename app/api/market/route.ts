@@ -1,17 +1,24 @@
 import { NextResponse } from "next/server";
-import { getBtcCurrentPrice } from "@/lib/api/coingecko";
-import { getFearGreedCurrent } from "@/lib/api/fear-greed";
+import { getBtcCurrentPrice, getBtcDailyPrices } from "@/lib/api/coingecko";
+import { getFearGreedCurrent, getFearGreedHistory } from "@/lib/api/fear-greed";
 
 export async function GET() {
     try {
-        const [btc, fgi] = await Promise.all([
+        const [btc, fgi, btcHistoryRaw, fgiHistoryRaw] = await Promise.all([
             getBtcCurrentPrice(),
             getFearGreedCurrent(),
+            getBtcDailyPrices(
+                new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+                new Date()
+            ),
+            getFearGreedHistory(30),
         ]);
 
         return NextResponse.json({
             btc,
             fgi,
+            btcHistory: btcHistoryRaw.map((p) => p.price),
+            fgiHistory: fgiHistoryRaw.map((d) => d.value).reverse(),
             timestamp: Date.now(),
             live: true,
         });

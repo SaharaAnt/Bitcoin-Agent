@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
-import { calculateAhr999 } from "@/lib/engine/ahr999";
+import { calculateAhr999, calculateAhr999History } from "@/lib/engine/ahr999";
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
         const session = await auth();
         if (!session?.user) {
@@ -9,7 +9,14 @@ export async function GET() {
         }
 
         const data = await calculateAhr999();
-        return Response.json(data);
+        const includeHistory = new URL(req.url).searchParams.get("history") === "1";
+
+        if (!includeHistory) {
+            return Response.json(data);
+        }
+
+        const history = await calculateAhr999History(365);
+        return Response.json({ ...data, history });
     } catch (error) {
         console.error("[ahr999] Error:", error);
         return new Response(

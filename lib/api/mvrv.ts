@@ -35,11 +35,17 @@ interface BlockchainChartPoint {
     y: number; // USD
 }
 
+export interface MvrvHistoryPoint {
+    timestamp: number;
+    zScore: number;
+    mvrv: number;
+}
+
 interface BlockchainChartResponse {
     values: BlockchainChartPoint[];
 }
 
-async function fetchMarketCapHistory(): Promise<number[]> {
+async function fetchMarketCapHistoryPoints(): Promise<BlockchainChartPoint[]> {
     // blockchain.info 免费 API，无需 key，返回过去2年市值时序（约700个点）
     const url = "https://api.blockchain.info/charts/market-cap?timespan=2years&sampled=true&format=json&cors=true";
 
@@ -52,10 +58,7 @@ async function fetchMarketCapHistory(): Promise<number[]> {
     if (!res.ok) throw new Error(`blockchain.info API error: ${res.status}`);
     const data: BlockchainChartResponse = await res.json();
 
-    // Extract market cap values in chronological order
-    return data.values
-        .sort((a, b) => a.x - b.x)
-        .map((d) => d.y);
+    return data.values.sort((a, b) => a.x - b.x);
 }
 
 function calcStdDev(values: number[]): number {
@@ -66,15 +69,16 @@ function calcStdDev(values: number[]): number {
 
 export async function getMvrvData(): Promise<MvrvData> {
     // Fetch current market cap from CoinGecko (already used elsewhere)
-    const [cgRes, historyValues] = await Promise.all([
+    const [cgRes, historyPoints] = await Promise.all([
         fetch(
             "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true",
             { headers: { accept: "application/json" }, next: { revalidate: 60 } }
         ).then((r) => r.json()),
-        fetchMarketCapHistory(),
+        fetchMarketCapHistoryPoints(),
     ]);
 
     const currentMarketCap: number = cgRes?.bitcoin?.usd_market_cap ?? 0;
+    const historyValues = historyPoints.map((p) => p.y);
 
     if (!currentMarketCap || historyValues.length < 30) {
         return {
@@ -154,4 +158,26 @@ export async function getMvrvData(): Promise<MvrvData> {
         description,
         timestamp: new Date().toISOString(),
     };
+}
+
+export async function getMvrvHistory(): Promise<MvrvHistoryPoint[]> {
+    const historyPoints = await fetchMarketCapHistoryPoints();
+    if (historyPoints.length < 30) return [];
+
+    const historyValues = historyPoints.map((p) => p.y);
+    const realizedCap = historyValues.reduce((s, v) => s + v, 0) / historyValues.length;
+    const differences = historyValues.map((mc) => mc - realizedCap);
+    const meanDiff = differences.reduce((s, v) => s + v, 0) / differences.length;
+    const stdDev = calcStdDev(differences);
+
+    return historyPoints.map((p) => {
+        const diff = p.y - realizedCap;
+        const zScore = stdDev > 0 ? (diff - meanDiff) / stdDev : 0;
+        const mvrv = realizedCap > 0 ? p.y / realizedCap : 0;
+        return {
+            timestamp: p.x * 1000,
+            zScore: Math.round(zScore * 100) / 100,
+            mvrv: Math.round(mvrv * 100) / 100,
+        };
+    });
 }

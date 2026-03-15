@@ -1,4 +1,4 @@
-import { getBtcPriceHistory, getBtcCurrentPrice } from "../api/coingecko";
+import { getBtcCurrentPrice, getBtcDailyPrices } from "../api/coingecko";
 
 /**
  * Bitcoin Ahr999 指标
@@ -26,6 +26,16 @@ export interface Ahr999Data {
     expectedPrice: number;
     coinAgeDays: number;
     timestamp: string;
+}
+
+export interface Ahr999HistoryPoint {
+    date: string;
+    value: number;
+    zone: "bottom" | "dca" | "wait";
+    zoneLabel: string;
+    price: number;
+    ma200: number;
+    expectedPrice: number;
 }
 
 function getCoinAgeDays(date: Date = new Date()): number {
@@ -121,4 +131,66 @@ export async function calculateAhr999(): Promise<Ahr999Data> {
         coinAgeDays,
         timestamp: new Date().toISOString(),
     };
+}
+
+export async function calculateAhr999History(days = 365): Promise<Ahr999HistoryPoint[]> {
+    const end = new Date();
+    const start = new Date(end.getTime() - (days + 220) * 24 * 60 * 60 * 1000);
+    const targetStart = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+
+    const prices = await getBtcDailyPrices(start, end);
+    if (prices.length < 210) return [];
+
+    const sorted = prices.sort((a, b) => a.timestamp - b.timestamp);
+    const values = sorted.map((p) => p.price);
+
+    let sum = 0;
+    for (let i = 0; i < 200; i++) {
+        sum += values[i];
+    }
+
+    const history: Ahr999HistoryPoint[] = [];
+    for (let i = 199; i < sorted.length; i++) {
+        const point = sorted[i];
+        const date = new Date(point.timestamp);
+        const ma200 = sum / 200;
+        const coinAgeDays = getCoinAgeDays(date);
+        const expectedPrice = getExpectedPrice(coinAgeDays);
+        const value =
+            ma200 > 0 && expectedPrice > 0
+                ? (point.price / ma200) * (point.price / expectedPrice)
+                : 0;
+
+        if (date >= targetStart) {
+            let zone: Ahr999HistoryPoint["zone"];
+            let zoneLabel: string;
+
+            if (value < 0.45) {
+                zone = "bottom";
+                zoneLabel = "🌠 抄底区间";
+            } else if (value < 1.2) {
+                zone = "dca";
+                zoneLabel = "📈 定投区间";
+            } else {
+                zone = "wait";
+                zoneLabel = "🧊 等待区间";
+            }
+
+            history.push({
+                date: date.toISOString().split("T")[0],
+                value: Math.round(value * 1000) / 1000,
+                zone,
+                zoneLabel,
+                price: Math.round(point.price),
+                ma200: Math.round(ma200),
+                expectedPrice: Math.round(expectedPrice),
+            });
+        }
+
+        if (i + 1 < sorted.length) {
+            sum += values[i + 1] - values[i - 199];
+        }
+    }
+
+    return history;
 }

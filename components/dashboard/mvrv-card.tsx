@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { Activity } from "lucide-react";
@@ -128,7 +128,7 @@ export default function MvrvCard() {
                 <div style={{ height: 260 }}>
                     <ResponsiveContainer>
                         <LineChart
-                            data={sparklineData.map((value, index) => ({
+                            data={sparklineData.map((value: number, index: number) => ({
                                 day: index + 1,
                                 value,
                             }))}

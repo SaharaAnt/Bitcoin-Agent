@@ -74,6 +74,8 @@ export const GET = withApiHandler("risk/report", async (req) => {
     smaDays: parseNumberParam(url.searchParams.get("smaDays")),
   });
 
+  if (!user.id) throw new ApiError(401, "User ID missing");
+
   const snapshot = await getOrGenerateLatestSnapshot({
     userId: user.id,
     force: fresh,
@@ -92,6 +94,8 @@ export const POST = withApiHandler("risk/report", async (req) => {
   if (!paramsParsed.success) {
     throw new ApiError(400, "Invalid params", paramsParsed.error.flatten());
   }
+
+  if (!user.id) throw new ApiError(401, "User ID missing");
 
   const snapshot = await getOrGenerateLatestSnapshot({
     userId: user.id,

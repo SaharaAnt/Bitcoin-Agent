@@ -10,6 +10,7 @@ import { getMockedLiquidations } from "../api/liquidations";
 import type { Frequency } from "../engine/types";
 import etfData from "../data/farside-data.json";
 import { getMvrvData } from "../api/mvrv";
+import { generateBtcRiskReport } from "../engine/risk-report";
 
 export const agentTools = {
     runDCABacktest: tool({
@@ -329,6 +330,20 @@ export const agentTools = {
                 console.error("Agent error fetching MVRV data:", err);
                 return { error: "无法获取 MVRV Z-Score 数据。" };
             }
+        },
+    }),
+
+    getRiskReport: tool({
+        description:
+            "Generate a verifiable BTC risk report using three fixed metrics: drawdown, 30D annualized volatility, and 200D trend (price vs SMA). Returns structured evidence and a short summary.",
+        inputSchema: z.object({
+            volatilityWindowDays: z.number().int().min(7).max(120).optional(),
+            drawdownLookbackDays: z.number().int().min(90).max(730).optional(),
+            smaDays: z.number().int().min(50).max(400).optional(),
+        }),
+        execute: async (params) => {
+            const report = await generateBtcRiskReport(params);
+            return report;
         },
     }),
 };

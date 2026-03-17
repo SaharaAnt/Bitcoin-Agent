@@ -20,6 +20,7 @@ import MvrvCard from "@/components/dashboard/mvrv-card";
 import PriceAlertCard from "@/components/dashboard/price-alert-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
+import RiskBriefCard from "@/components/dashboard/risk-brief-card";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
 
 interface BacktestResult {
@@ -182,6 +183,11 @@ export default function DashboardClient() {
                     <FGICard />
                     <Ahr999Card />
                     <MvrvCard />
+                </div>
+
+                {/* Row 3: Verifiable Risk Brief */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 24 }}>
+                    <RiskBriefCard />
                 </div>
 
                 {/* Row 3: Detailed Analysis (Medium Text/List Cards) */}

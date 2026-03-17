@@ -4,6 +4,12 @@ on:
   schedule:
     # 00:00 UTC is 08:00 AM Beijing Time
     - cron: '0 0 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/update-farside.ts'
+      - '.github/workflows/update-etf.yml'
   workflow_dispatch: # Allow manual trigger
 
 permissions:

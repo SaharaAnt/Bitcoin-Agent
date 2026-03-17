@@ -17,6 +17,7 @@ model User {
   sessions       Session[]
   tradeJournals  TradeJournal[]
   alerts         Alert[]
+  riskReports    RiskReportSnapshot[]
 }
 
 model Session {
@@ -76,4 +77,19 @@ model Alert {
   status      String    @default("ACTIVE") // "ACTIVE" | "TRIGGERED" | "CANCELLED"
   timestamp   DateTime  @default(now()) // When the alert was created
   triggeredAt DateTime? // When the alert fired
+}
+
+model RiskReportSnapshot {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  asOf       DateTime
+  hash       String   @unique
+  confidence Float
+  params     Json
+  metrics    Json
+  report     Json
+
+  @@index([userId, createdAt])
 }

@@ -43,6 +43,41 @@ lib/
 ## ⚠️ 踩坑记录（每次修 bug 后追加）
 
 ### 1. `@ai-sdk/openai@3` 默认走 Responses API
+- **Auth**: NextAuth v5 beta (credentials provider, JWT strategy)
+- **UI**: React 19, Vanilla CSS, Framer Motion, Recharts, Lucide Icons
+- **Validation**: Zod 4
+- **Test**: Vitest (已配置，暂无测试文件)
+
+## 目录结构
+
+```
+app/
+  api/chat/         → AI 聊天 API (streamText + DeepSeek)
+  api/backtest/     → 回测 API
+  api/market/       → 市场数据 API
+  api/auth/         → NextAuth routes
+  api/register/     → 用户注册
+  login/            → 登录页
+  page.tsx          → 主页 (DashboardClient)
+
+components/
+  chat/             → ChatPanel (useChat)
+  backtest/         → BacktestChart, BacktestStats, BacktestForm
+  dashboard/        → DashboardClient, MarketOverview, StrategyPanel
+  providers.tsx     → SessionProvider wrapper
+
+lib/
+  agent/            → system-prompt.ts, tools.ts
+  api/              → coingecko.ts, fear-greed.ts
+  engine/           → dca-engine.ts, types.ts
+  auth.ts           → NextAuth full config (with Prisma + bcryptjs)
+  auth.config.ts    → Edge-safe auth config (no Prisma)
+  prisma.ts         → Prisma client singleton
+```
+
+## ⚠️ 踩坑记录（每次修 bug 后追加）
+
+### 1. `@ai-sdk/openai@3` 默认走 Responses API
 - `deepseek("model-name")` 会调用 OpenAI Responses API (`/responses` 端点)
 - DeepSeek 不支持 Responses API → 返回 404
 - **正确用法**: `deepseek.chat("deepseek-chat")` 明确使用 Chat Completions
@@ -56,25 +91,16 @@ lib/
 - `streamText` 的多步 tool 调用用 `stopWhen: stepCountIs(N)`，不是 `maxSteps`
 - 默认 `stepCountIs(1)` 只执行一步
 
+### 7. Puppeteer 爬取 Farside 网络连接失败
+- Farside 经常阻断 headless Chrome 的直连，导致 `net::ERR_CONNECTION_CLOSED`
+- **解决**: 在 `puppeteer.launch` 的 `args` 中明确加上本地代理 `--proxy-server=http://127.0.0.1:7890` 以确保走代理网络，绕过直连拦截
+
+### 8. CoinGecko 频繁 401 且 Binance 报 451
+- **踩坑**: CoinGecko 公共 API 由于检测到代理或频繁请求会直接报 401 Unauthorized；换用 Binance API 也会因为美国代理节点报 451 Unavailable For Legal Reasons。
+- **解决**: 将价格和历史 K线的获取源统一替换为对代理容忍度更高、无需强绑 API Key 的 CryptoCompare API。
 ### 4. Prisma 7 推荐用 driver adapter (Postgres)
 - 本项目使用 `@prisma/adapter-pg` + `pg` Pool
 - `PrismaClient` 构造函数可传 `adapter` 来复用连接池（见 `lib/prisma.ts`）
-
-### 5. Middleware 不能导入 Prisma/bcryptjs
-- Edge runtime 不支持 Node.js 原生模块
-- middleware 用精简的 `auth.config.ts`（无 providers）
-- 完整 auth 逻辑在 `auth.ts`
-
-### 6. Zod 4 的 import 路径
-- `import { z } from "zod"` → Zod 4 Mini API
-- `import { z } from "zod/v4"` → 经典 Zod 3 兼容 API
-- AI SDK tools 用 `zod/v4` 的经典 API
-
-## 编码约定
-
-### API Routes
-```typescript
-// 标准模式：try-catch + auth + logging
 export async function POST(req: Request) {
     try {
         const session = await auth();

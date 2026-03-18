@@ -37,7 +37,13 @@ async function fetchWithCache<T>(url: string, ttlMs = 60_000): Promise<T> {
         }
     }
 
-    const res = await fetch(url, fetchOptions);
+    let res = await fetch(url, fetchOptions);
+    if (res.status === 401 && fetchOptions.headers["x-cg-demo-api-key"]) {
+        console.warn(`[coingecko] 401 Unauthorized with API key. Retrying without key...`);
+        delete fetchOptions.headers["x-cg-demo-api-key"];
+        res = await fetch(url, fetchOptions);
+    }
+
     if (!res.ok) {
         throw new Error(`CoinGecko API error: ${res.status} ${res.statusText}`);
     }
@@ -51,19 +57,32 @@ export async function getBtcPriceHistory(
     fromDate: Date,
     toDate: Date
 ): Promise<PricePoint[]> {
-    const from = Math.floor(fromDate.getTime() / 1000);
-    const to = Math.floor(toDate.getTime() / 1000);
+    // Fallback to CryptoCompare to avoid 401s and 451s
+    const diffDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24));
+    const limit = Math.min(diffDays + 2, 2000); // max is 2000 for CryptoCompare
+    const toTs = Math.floor(toDate.getTime() / 1000);
+    const url = `https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=${limit}&toTs=${toTs}`;
+    
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const fetchOptions: any = {};
+    if (proxyUrl) {
+        try {
+            fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        } catch (e) {}
+    }
 
-    const url = `${COINGECKO_BASE}/coins/bitcoin/market_chart/range?vs_currency=usd&from=${from}&to=${to}`;
-
-    const data = await fetchWithCache<{ prices: [number, number][] }>(
-        url,
-        300_000 // cache 5 min
-    );
-
-    return data.prices.map(([timestamp, price]) => ({
-        timestamp,
-        price,
+    const res = await fetch(url, fetchOptions);
+    if (!res.ok) {
+        throw new Error(`CryptoCompare API error: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    if (json.Response === "Error") {
+         throw new Error(`CryptoCompare API error: ${json.Message}`);
+    }
+    
+    return json.Data.Data.map((d: any) => ({
+        timestamp: d.time * 1000,
+        price: d.close
     }));
 }
 
@@ -72,20 +91,27 @@ export async function getBtcCurrentPrice(): Promise<{
     change24h: number;
     marketCap: number;
 }> {
-    const url = `${COINGECKO_BASE}/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true`;
+    const url = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC&tsyms=USD";
+    
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const fetchOptions: any = {};
+    if (proxyUrl) {
+        try {
+            fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        } catch (e) {}
+    }
 
-    const data = await fetchWithCache<{
-        bitcoin: {
-            usd: number;
-            usd_24h_change: number;
-            usd_market_cap: number;
-        };
-    }>(url, 30_000);
+    const res = await fetch(url, fetchOptions);
+    if (!res.ok) {
+        throw new Error(`CryptoCompare API error: ${res.status} ${res.statusText}`);
+    }
+    const json = await res.json();
+    const data = json.RAW?.BTC?.USD || {};
 
     return {
-        price: data.bitcoin.usd,
-        change24h: data.bitcoin.usd_24h_change,
-        marketCap: data.bitcoin.usd_market_cap,
+        price: parseFloat(data.PRICE || "0"),
+        change24h: parseFloat(data.CHANGEPCT24HOUR || "0"),
+        marketCap: parseFloat(data.MKTCAP || "0"),
     };
 }
 

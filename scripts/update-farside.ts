@@ -48,7 +48,8 @@ async function scrapeFarside() {
             '--window-position=0,0',
             '--ignore-certifcate-errors',
             '--ignore-certifcate-errors-spki-list',
-            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            '--proxy-server=http://127.0.0.1:7890'
         ]
     });
     

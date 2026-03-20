@@ -1,12 +1,11 @@
 /**
- * MVRV Z-Score 指标
- *
- * MVRV (Market Value to Realized Value) Z-Score 是比特币最重要的链上周期指标之一。
+ * MVRV Z-Score 指标 & NUPL (Investor Confidence Index)
  */
 
 export interface MvrvData {
     zScore: number;
     mvrv: number;           // 简单 MVRV 比率 (marketCap / realizedCap)
+    nupl: number;           // Net Unrealized Profit/Loss (Investor Confidence Index)
     marketCap: number;      // 当前市值 USD
     realizedCap: number;    // 预估 Realized Cap USD
     zone: "top" | "high" | "fair" | "low" | "bottom";
@@ -16,14 +15,20 @@ export interface MvrvData {
     timestamp: string;
     // Price levels based on MVRV standard deviations
     priceLevels: {
-        extremeBottom: number; // -2.0 std
-        bottom: number;        // -1.0 std (Blue line in Murphy's model)
-        fairValue: number;     // -0.5 std (Green line - key resistance/support)
-        mean: number;          // 0.0 std
-        overvalued: number;    // +1.0 std
-        bubble: number;        // +2.0 std
+        extremeBottom: number;
+        bottom: number;
+        fairValue: number;
+        mean: number;
+        overvalued: number;
+        bubble: number;
     };
     currentPrice: number;
+    // Investor Confidence (NUPL) specialized metrics
+    bullCountdown?: {
+        daysToZero: number;
+        speedPerDay: number; // Avg NUPL change over last 10 days
+        isBullish: boolean;
+    };
 }
 
 interface BlockchainChartPoint {
@@ -35,6 +40,7 @@ export interface MvrvHistoryPoint {
     timestamp: number;
     zScore: number;
     mvrv: number;
+    nupl: number;
 }
 
 interface BlockchainChartResponse {
@@ -73,7 +79,7 @@ export async function getMvrvData(): Promise<MvrvData> {
 
     if (!currentMarketCap || historyValues.length < 30) {
         return {
-            zScore: 0, mvrv: 0, marketCap: 0, realizedCap: 0,
+            zScore: 0, mvrv: 0, nupl: 0, marketCap: 0, realizedCap: 0,
             zone: "fair", zoneLabel: "⚠️ 数据不可用", zoneColor: "#6b7280",
             description: "无法获取市场数据，请稍后重试",
             timestamp: new Date().toISOString(),
@@ -91,6 +97,18 @@ export async function getMvrvData(): Promise<MvrvData> {
 
     const zScore = stdDev > 0 ? (currentDiff - meanDiff) / stdDev : 0;
     const mvrv = realizedCap > 0 ? currentMarketCap / realizedCap : 0;
+    const nupl = 1 - (1 / mvrv);
+
+    // Bull countdown logic (momentum of NUPL)
+    const recentNUPLHistory = historyPoints.slice(-11).map(p => 1 - (realizedCap / p.y));
+    const nuplStart = recentNUPLHistory[0];
+    const nuplEnd = nupl;
+    const speedPerDay = (nuplEnd - nuplStart) / 10;
+    
+    let daysToZero = 0;
+    if (nupl < 0 && speedPerDay > 0) {
+        daysToZero = Math.round(Math.abs(nupl) / speedPerDay);
+    }
 
     // Price levels calculation
     const supply = currentPrice > 0 ? currentMarketCap / currentPrice : 19600000;
@@ -143,6 +161,7 @@ export async function getMvrvData(): Promise<MvrvData> {
     return {
         zScore: Math.round(zScore * 100) / 100,
         mvrv: Math.round(mvrv * 100) / 100,
+        nupl: Math.round(nupl * 1000) / 1000,
         marketCap: Math.round(currentMarketCap),
         realizedCap: Math.round(realizedCap),
         zone,
@@ -151,7 +170,12 @@ export async function getMvrvData(): Promise<MvrvData> {
         description,
         timestamp: new Date().toISOString(),
         priceLevels,
-        currentPrice
+        currentPrice,
+        bullCountdown: {
+            daysToZero,
+            speedPerDay: Math.round(speedPerDay * 10000) / 10000,
+            isBullish: nupl >= 0
+        }
     };
 }
 
@@ -168,10 +192,12 @@ export async function getMvrvHistory(): Promise<MvrvHistoryPoint[]> {
         const diff = p.y - realizedCap;
         const zScore = stdDev > 0 ? (diff - meanDiff) / stdDev : 0;
         const mvrv = realizedCap > 0 ? p.y / realizedCap : 0;
+        const nupl = 1 - (1 / mvrv);
         return {
             timestamp: p.x * 1000,
             zScore: Math.round(zScore * 100) / 100,
             mvrv: Math.round(mvrv * 100) / 100,
+            nupl: Math.round(nupl * 1000) / 1000,
         };
     });
 }

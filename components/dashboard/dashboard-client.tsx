@@ -17,6 +17,7 @@ import UsdtSentimentCard from "@/components/dashboard/usdt-sentiment-card";
 import MacroLiquidityCard from "@/components/dashboard/macro-liquidity-card";
 import EtfFlowCard from "@/components/dashboard/etf-flow-card";
 import MvrvCard from "@/components/dashboard/mvrv-card";
+import ConfidenceCard from "@/components/dashboard/confidence-card";
 import PriceAlertCard from "@/components/dashboard/price-alert-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
@@ -178,11 +179,12 @@ export default function DashboardClient() {
                 </div>
 
                 {/* Row 2: Core Indicators (Compact Metric Cards) */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 24 }}>
                     <PriceCard />
                     <FGICard />
                     <Ahr999Card />
                     <MvrvCard />
+                    <ConfidenceCard />
                 </div>
 
                 {/* Row 3: Verifiable Risk Brief */}

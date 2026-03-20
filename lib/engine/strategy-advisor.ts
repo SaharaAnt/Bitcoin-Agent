@@ -133,20 +133,29 @@ function generateSuggestion(
     let fearMultiplier = 2.0;
     let greedMultiplier = 0.5;
 
-    // 1. MVRV specific reasoning (User requested model)
-    if (mvrv && mvrv.priceLevels) {
-        const currentPrice = mvrv.currentPrice;
-        const z = mvrv.zScore;
-        const { fairValue, bottom } = mvrv.priceLevels;
+    // 1. MVRV & NUPL specific reasoning (User requested models)
+    if (mvrv) {
+        if (mvrv.priceLevels) {
+            const currentPrice = mvrv.currentPrice;
+            const z = mvrv.zScore;
+            const { fairValue, bottom } = mvrv.priceLevels;
 
-        if (z >= -0.6 && z <= -0.4) {
-            reasoning.push(`BTC 正在反复尝试突破 MVRV 绿线 (${z.toFixed(2)} std / $${fairValue.toLocaleString()})，这是关键中短期阻力/支撑位`);
-        } else if (z > -0.4 && z < 0.5) {
-             // Neutral zone near green line
+            if (z >= -0.6 && z <= -0.4) {
+                reasoning.push(`BTC 正在反复尝试突破 MVRV 绿线 (${z.toFixed(2)} std / $${fairValue.toLocaleString()})，这是关键中短期阻力/支撑位`);
+            }
+
+            if (currentPrice <= bottom * 1.05) {
+                reasoning.push(`价格已接近 MVRV 蓝线（$${bottom.toLocaleString()}），大级别底部特征明显`);
+            }
         }
 
-        if (currentPrice <= bottom * 1.05) {
-            reasoning.push(`价格已接近 MVRV 蓝线（$${bottom.toLocaleString()}），大级别底部特征明显`);
+        // Investor Confidence (NUPL) reasoning
+        if (mvrv.nupl <= -0.2) {
+            reasoning.push(`投资者信心指数现极端负值 (${mvrv.nupl})，“物极必反”，历史上此类深坑往往孕育暴力反弹`);
+        } else if (mvrv.nupl < 0 && mvrv.bullCountdown) {
+            reasoning.push(`信心指数正向零轴靠近，按近期速度，预计约 ${mvrv.bullCountdown.daysToZero} 天重回零轴（牛市起始信号）`);
+        } else if (mvrv.nupl >= 0 && mvrv.nupl < 0.1) {
+            reasoning.push("信心指数已站上零轴，市场进入初步复苏/牛市早期阶段");
         }
     }
 

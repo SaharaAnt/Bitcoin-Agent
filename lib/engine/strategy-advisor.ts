@@ -1,5 +1,6 @@
 import { getBtcCurrentPrice } from "../api/coingecko";
 import { getFearGreedCurrent, getFearGreedHistory } from "../api/fear-greed";
+import { getMvrvData, MvrvData } from "../api/mvrv";
 
 export type Signal =
     | "strong_buy"
@@ -21,6 +22,7 @@ export interface MarketAnalysis {
         price: number;
         change24h: number;
     };
+    mvrv?: MvrvData; // Add MVRV to analysis result
     suggestion: {
         frequency: string;
         fearThreshold: number;
@@ -71,7 +73,8 @@ function computeFgiTrend(history: { value: number }[]): {
 function analyzeSignal(
     fgiValue: number,
     fgiTrend: "falling" | "rising" | "stable",
-    change24h: number
+    change24h: number,
+    mvrvZScore: number
 ): { signal: Signal; confidence: number } {
     let score = 0; // negative = buy, positive = reduce
 
@@ -83,6 +86,14 @@ function analyzeSignal(
     else if (fgiValue <= 70) score += 10;
     else if (fgiValue <= 80) score += 25;
     else score += 40;
+
+    // MVRV Z-Score modifier (-30 to +30)
+    if (mvrvZScore <= -2) score -= 30;
+    else if (mvrvZScore <= -1) score -= 20;
+    else if (mvrvZScore <= -0.5) score -= 10;
+    else if (mvrvZScore >= 7) score += 30;
+    else if (mvrvZScore >= 3) score += 20;
+    else if (mvrvZScore >= 1) score += 10;
 
     // Trend modifier (-10 to +10)
     if (fgiTrend === "falling") score -= 10;
@@ -111,7 +122,8 @@ function generateSuggestion(
     signal: Signal,
     fgiValue: number,
     fgiTrend: string,
-    change24h: number
+    change24h: number,
+    mvrv?: MvrvData
 ): MarketAnalysis["suggestion"] {
     const reasoning: string[] = [];
 
@@ -121,19 +133,31 @@ function generateSuggestion(
     let fearMultiplier = 2.0;
     let greedMultiplier = 0.5;
 
+    // 1. MVRV specific reasoning (User requested model)
+    if (mvrv && mvrv.priceLevels) {
+        const currentPrice = mvrv.currentPrice;
+        const z = mvrv.zScore;
+        const { fairValue, bottom } = mvrv.priceLevels;
+
+        if (z >= -0.6 && z <= -0.4) {
+            reasoning.push(`BTC 正在反复尝试突破 MVRV 绿线 (${z.toFixed(2)} std / $${fairValue.toLocaleString()})，这是关键中短期阻力/支撑位`);
+        } else if (z > -0.4 && z < 0.5) {
+             // Neutral zone near green line
+        }
+
+        if (currentPrice <= bottom * 1.05) {
+            reasoning.push(`价格已接近 MVRV 蓝线（$${bottom.toLocaleString()}），大级别底部特征明显`);
+        }
+    }
+
     switch (signal) {
         case "strong_buy":
             frequency = "daily";
             fearThreshold = 30;
             fearMultiplier = 3.0;
             greedMultiplier = 0.5;
-            reasoning.push(`恐惧贪婪指数仅 ${fgiValue}，市场极度恐惧`);
-            reasoning.push("建议提高定投频率至每日，并加大恐惧加仓倍数至 3x");
-            if (change24h <= -5) {
-                reasoning.push(
-                    `BTC 24h 下跌 ${Math.abs(change24h).toFixed(1)}%，短期恐慌加剧，历史上是好的买入机会`
-                );
-            }
+            reasoning.push(`综合评估显示当前为极佳买入点`);
+            if (mvrv && mvrv.zScore <= -1) reasoning.push(`MVRV Z-Score (${mvrv.zScore}) 处于历史极度低估区间`);
             break;
 
         case "buy":
@@ -141,45 +165,27 @@ function generateSuggestion(
             fearThreshold = 25;
             fearMultiplier = 2.0;
             greedMultiplier = 0.5;
-            reasoning.push(`FGI ${fgiValue}，市场处于恐惧区间`);
-            reasoning.push("建议维持周定投，恐惧加仓 2x");
-            if (fgiTrend === "falling") {
-                reasoning.push("FGI 近 7 天持续下降，恐惧情绪加深，可适当加仓");
-            }
+            reasoning.push(`情绪与估值协同指示加仓机会`);
             break;
 
         case "neutral":
             frequency = "weekly";
-            fearThreshold = 25;
-            greedThreshold = 75;
-            fearMultiplier = 2.0;
-            greedMultiplier = 0.5;
-            reasoning.push(`FGI ${fgiValue}，市场情绪中性`);
-            reasoning.push("保持默认定投策略即可，无需调整");
+            reasoning.push("市场处于合理估值区间，保持纪律定投");
+            if (mvrv && mvrv.zScore >= -0.6 && mvrv.zScore <= -0.4) {
+                reasoning.push("技术面遇阻 MVRV 绿线，短线不恋战，等待趋势明朗");
+            }
             break;
 
         case "reduce":
             frequency = "biweekly";
-            greedThreshold = 70;
-            fearMultiplier = 1.5;
             greedMultiplier = 0.3;
-            reasoning.push(`FGI ${fgiValue}，市场偏贪婪`);
-            reasoning.push("建议降低频率至双周，贪婪减仓至 0.3x");
-            if (fgiTrend === "rising") {
-                reasoning.push("FGI 趋势上升，贪婪情绪可能进一步加剧");
-            }
+            reasoning.push(`市场情绪偏温和贪婪，建议适度收紧策略`);
             break;
 
         case "strong_reduce":
             frequency = "monthly";
-            greedThreshold = 65;
-            fearMultiplier = 1.0;
             greedMultiplier = 0.2;
-            reasoning.push(`FGI 高达 ${fgiValue}，市场极度贪婪`);
-            reasoning.push(
-                "建议将定投频率降至每月，贪婪减仓至 0.2x，保留现金等待回调"
-            );
-            reasoning.push("历史上极度贪婪往往伴随短期顶部");
+            reasoning.push("估值过高且情绪过热，建议大幅收缩，保留现金回补");
             break;
     }
 
@@ -216,7 +222,7 @@ async function fetchWithTimeout<T>(
 }
 
 export async function analyzeMarketConditions(): Promise<MarketAnalysis> {
-    const [btcData, fgiCurrent, fgiHistory] = await Promise.all([
+    const [btcData, fgiCurrent, fgiHistory, mvrv] = await Promise.all([
         fetchWithTimeout(
             () => getBtcCurrentPrice(),
             { price: 0, change24h: 0, marketCap: 0 }
@@ -229,9 +235,13 @@ export async function analyzeMarketConditions(): Promise<MarketAnalysis> {
             () => getFearGreedHistory(7),
             []
         ),
+        fetchWithTimeout(
+            () => getMvrvData(),
+            null
+        ),
     ]);
 
-    // If both APIs failed, return a "data unavailable" analysis
+    // If major APIs failed, return a "data unavailable" analysis
     if (btcData.price === 0 && fgiCurrent.value === 50 && fgiHistory.length === 0) {
         return {
             signal: "neutral",
@@ -244,7 +254,7 @@ export async function analyzeMarketConditions(): Promise<MarketAnalysis> {
                 greedThreshold: 75,
                 fearMultiplier: 2.0,
                 greedMultiplier: 0.5,
-                reasoning: ["无法获取市场数据，建议保持默认定投策略", "请检查网络连接后重试"],
+                reasoning: ["无法获取市场数据，建议保持默认定投策略"],
             },
             confidence: 0,
             timestamp: new Date().toISOString(),
@@ -254,17 +264,20 @@ export async function analyzeMarketConditions(): Promise<MarketAnalysis> {
     const { trend, avg7d } = computeFgiTrend(
         fgiHistory.length > 0 ? fgiHistory : [fgiCurrent]
     );
+    
     const { signal, confidence } = analyzeSignal(
         fgiCurrent.value,
         trend,
-        btcData.change24h
+        btcData.change24h,
+        mvrv?.zScore ?? 0
     );
 
     const suggestion = generateSuggestion(
         signal,
         fgiCurrent.value,
         trend,
-        btcData.change24h
+        btcData.change24h,
+        mvrv || undefined
     );
 
     return {
@@ -280,6 +293,7 @@ export async function analyzeMarketConditions(): Promise<MarketAnalysis> {
             price: btcData.price,
             change24h: btcData.change24h,
         },
+        mvrv: mvrv || undefined,
         suggestion,
         confidence,
         timestamp: new Date().toISOString(),

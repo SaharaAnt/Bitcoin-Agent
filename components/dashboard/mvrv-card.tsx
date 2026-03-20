@@ -106,10 +106,45 @@ export default function MvrvCard() {
                         <div
                             style={{
                                 display: "grid",
-                                gridTemplateColumns: "1fr 1fr 1fr",
-                                gap: 8,
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: "12px 8px",
                                 fontSize: 12,
                                 color: "var(--text-secondary)",
+                                marginTop: 8,
+                                padding: 12,
+                                background: "var(--bg-secondary)",
+                                borderRadius: 12,
+                                border: "1px solid var(--border-color)",
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>🟢 绿线 (-0.5σ):</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${mvrv.priceLevels?.fairValue.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>🔵 蓝线 (-1.0σ):</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${mvrv.priceLevels?.bottom.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>🟠 均值 (0.0σ):</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${mvrv.priceLevels?.mean.toLocaleString()}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span>💀 抄底 (-2.0σ):</span>
+                                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>${mvrv.priceLevels?.extremeBottom.toLocaleString()}</span>
+                            </div>
+                            <div style={{ gridColumn: 'span 2', fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 4 }}>
+                                * 基于 MVRV 极端偏差模型定投参考
+                            </div>
+                        </div>
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr 1fr",
+                                gap: 8,
+                                fontSize: 11,
+                                color: "var(--text-muted)",
+                                marginTop: 4,
                             }}
                         >
                             <div>区间最低: {historyMin.toFixed(2)}</div>

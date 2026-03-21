@@ -65,16 +65,52 @@ function calcStdDev(values: number[]): number {
 }
 
 export async function getMvrvData(): Promise<MvrvData> {
+    const isVercel = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const fetchOptions: any = { 
+        headers: { accept: "application/json" }, 
+        next: { revalidate: 60 } 
+    };
+
+    // Skip local proxy in production
+    if (proxyUrl && !isVercel) {
+        try {
+            const { ProxyAgent } = await import("undici");
+            fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
+        } catch (e) {}
+    }
+
+    const cgProxyPromise = fetch(
+        "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true",
+        fetchOptions
+    ).then((r) => r.json()).catch(err => {
+        console.warn("[mvrv] CoinGecko failed, will try fallback:", err);
+        return null;
+    });
+
     const [cgRes, historyPoints] = await Promise.all([
-        fetch(
-            "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true",
-            { headers: { accept: "application/json" }, next: { revalidate: 60 } }
-        ).then((r) => r.json()),
+        cgProxyPromise,
         fetchMarketCapHistoryPoints(),
     ]);
 
-    const currentMarketCap: number = cgRes?.bitcoin?.usd_market_cap ?? 0;
-    const currentPrice: number = cgRes?.bitcoin?.usd ?? 0;
+    let currentMarketCap: number = cgRes?.bitcoin?.usd_market_cap ?? 0;
+    let currentPrice: number = cgRes?.bitcoin?.usd ?? 0;
+
+    // Fallback to CryptoCompare if CoinGecko failed
+    if (currentPrice === 0) {
+        try {
+            const ccUrl = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC&tsyms=USD";
+            const ccRes = await fetch(ccUrl, isVercel ? {} : fetchOptions).then(r => r.json());
+            const data = ccRes.RAW?.BTC?.USD || {};
+            currentPrice = parseFloat(data.PRICE || "0");
+            currentMarketCap = parseFloat(data.MKTCAP || "0");
+            if (currentPrice > 0) {
+                console.log("[mvrv] Successfully used CryptoCompare fallback for live price.");
+            }
+        } catch (err) {
+            console.error("[mvrv] CryptoCompare fallback also failed:", err);
+        }
+    }
     const historyValues = historyPoints.map((p) => p.y);
 
     if (!currentMarketCap || historyValues.length < 30) {

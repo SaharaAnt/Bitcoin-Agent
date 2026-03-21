@@ -27,17 +27,26 @@ async function fetchWithCache<T>(url: string, ttlMs = 60_000): Promise<T> {
     }
 
     const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const isVercel = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
     const fetchOptions: any = { headers };
     
-    if (proxyUrl) {
+    // Skip local proxy in production/Vercel unless explicitly configured
+    if (proxyUrl && !isVercel) {
         try {
+            console.log(`[coingecko] Using proxy: ${proxyUrl}`);
             fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
         } catch (e) {
             console.warn("[coingecko] Failed to create ProxyAgent:", e);
         }
     }
 
-    let res = await fetch(url, fetchOptions);
+    let res;
+    try {
+        res = await fetch(url, fetchOptions);
+    } catch (e) {
+        console.error(`[coingecko] Fetch failed for ${url}:`, e);
+        throw e;
+    }
     if (res.status === 401 && fetchOptions.headers["x-cg-demo-api-key"]) {
         console.warn(`[coingecko] 401 Unauthorized with API key. Retrying without key...`);
         delete fetchOptions.headers["x-cg-demo-api-key"];
@@ -64,8 +73,9 @@ export async function getBtcPriceHistory(
     const url = `https://min-api.cryptocompare.com/data/v2/histoday?fsym=BTC&tsym=USD&limit=${limit}&toTs=${toTs}`;
     
     const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const isVercel = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
     const fetchOptions: any = {};
-    if (proxyUrl) {
+    if (proxyUrl && !isVercel) {
         try {
             fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
         } catch (e) {}
@@ -94,8 +104,9 @@ export async function getBtcCurrentPrice(): Promise<{
     const url = "https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC&tsyms=USD";
     
     const proxyUrl = process.env.HTTPS_PROXY || process.env.HTTP_PROXY;
+    const isVercel = process.env.VERCEL === "1" || process.env.NODE_ENV === "production";
     const fetchOptions: any = {};
-    if (proxyUrl) {
+    if (proxyUrl && !isVercel) {
         try {
             fetchOptions.dispatcher = new ProxyAgent(proxyUrl);
         } catch (e) {}

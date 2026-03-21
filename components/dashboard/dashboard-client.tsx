@@ -102,8 +102,7 @@ export default function DashboardClient() {
         <div
             style={{
                 minHeight: "100vh",
-                background:
-                    "radial-gradient(ellipse at top left, #1a1020 0%, #0a0a0f 50%)",
+                background: "transparent", // relying on global body background
             }}
         >
             {/* Header */}
@@ -113,9 +112,10 @@ export default function DashboardClient() {
                     justifyContent: "space-between",
                     alignItems: "center",
                     padding: "16px 32px",
-                    borderBottom: "1px solid var(--border-color)",
+                    borderBottom: "1px solid var(--neon-cyan)",
                     backdropFilter: "blur(20px)",
-                    background: "rgba(10, 10, 15, 0.8)",
+                    background: "rgba(1, 1, 10, 0.85)",
+                    boxShadow: "0 0 20px rgba(0, 243, 255, 0.15)",
                     position: "sticky",
                     top: 0,
                     zIndex: 50,
@@ -126,37 +126,39 @@ export default function DashboardClient() {
                         style={{
                             width: 36,
                             height: 36,
-                            borderRadius: 10,
-                            background:
-                                "linear-gradient(135deg, var(--btc-orange), var(--btc-orange-dark))",
+                            borderRadius: 4,
+                            background: "rgba(0, 243, 255, 0.1)",
+                            border: "1px solid var(--neon-cyan)",
+                            boxShadow: "inset 0 0 10px rgba(0, 243, 255, 0.2), 0 0 15px rgba(0, 243, 255, 0.3)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                         }}
                     >
-                        <Bitcoin size={20} color="white" />
+                        <Bitcoin size={20} color="var(--neon-cyan)" />
                     </div>
                     <div>
                         <h1
-                            style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2 }}
-                            className="btc-gradient"
+                            style={{ fontSize: 16, fontWeight: 800, lineHeight: 1.2, color: "var(--neon-cyan)", textShadow: "0 0 8px rgba(0, 243, 255, 0.5)", fontFamily: "var(--font-mono)", textTransform: "uppercase", letterSpacing: 1 }}
                         >
-                            DCA Strategy Agent
+                            DCA SYSTEM.CORE
                         </h1>
                         <p
                             style={{
                                 fontSize: 11,
-                                color: "var(--text-muted)",
+                                color: "var(--text-secondary)",
+                                fontFamily: "var(--font-mono)",
+                                textTransform: "uppercase"
                             }}
                         >
-                            智能定投策略助手
+                            Agent Network Active
                         </p>
                     </div>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                    <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-                        {session.user?.name || session.user?.email}
+                    <span style={{ fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
+                        ID: {session.user?.name || session.user?.email}
                     </span>
                     <button
                         onClick={() => signOut({ callbackUrl: "/login" })}
@@ -164,22 +166,16 @@ export default function DashboardClient() {
                         style={{ padding: "8px 14px", fontSize: 13 }}
                     >
                         <LogOut size={14} style={{ marginRight: 4, verticalAlign: -2 }} />
-                        登出
+                        DISCONNECT
                     </button>
                 </div>
             </header>
 
             {/* Main Content */}
             <main style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 32px" }}>
-                {/* Top Section: High Frequency Trading Tools (Chat & Diary) */}
-                {/* Row 1: Workspace (Chat & Diary) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
-                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}><ChatPanel /></div>
-                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}><TradingDiary /></div>
-                </div>
-
-                {/* Row 2: Core Indicators (Compact Metric Cards) */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 24 }}>
+                {/* HEADS UP DISPLAY / Row 1: Core Pulse Indicators */}
+                <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--neon-cyan)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ SYSTEM.PULSE ]</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 32 }}>
                     <PriceCard />
                     <FGICard />
                     <Ahr999Card />
@@ -187,26 +183,36 @@ export default function DashboardClient() {
                     <ConfidenceCard />
                 </div>
 
-                {/* Row 3: Verifiable Risk Brief */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16, marginBottom: 24 }}>
-                    <RiskBriefCard />
+                {/* COMMAND CENTER / Row 2: Verifiable Risk & Strategy Advisor */}
+                <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ STRATEGY.MATRIX ]</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        <RiskBriefCard />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+                        <StrategyAdvisor />
+                    </div>
                 </div>
 
-                {/* Row 3: Detailed Analysis (Medium Text/List Cards) */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
+                {/* WORKSPACE / Row 3: AI Chat & Trading Diary */}
+                <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--cyber-magenta)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ NEURAL.LINK_INTERFACE ]</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}><ChatPanel /></div>
+                    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}><TradingDiary /></div>
+                </div>
+
+                {/* DATA FEED / Row 4: Deep Dive Analytics */}
+                <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ DATA.FEED ]</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
                     <MacroLiquidityCard />
-                    <StrategyAdvisor />
+                    <UsdtSentimentCard />
+                    <EtfFlowCard />
                     <OnchainCard />
                 </div>
 
-                {/* Row 4: Flow & Sentiment Charts (Wide Chart Cards) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
-                    <UsdtSentimentCard />
-                    <EtfFlowCard />
-                </div>
-
-                {/* Row 5: Long Charts & Actionable Tools */}
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 24, alignItems: "stretch" }}>
+                {/* TOOLS & SIMULATION / Row 5: Actionable Tools */}
+                <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ SIMULATION.TOOLS ]</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
                     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                         {macro?.retailSentiment?.timeline && (
                             <TrendsChart
@@ -221,9 +227,10 @@ export default function DashboardClient() {
                     </div>
                 </div>
 
-                {/* Results */}
+                {/* Results Section for Backtester */}
                 {backtestResult && (
-                    <div className="fade-in">
+                    <div className="fade-in" style={{ marginTop: 24, padding: "24px 0", borderTop: "1px solid var(--neon-cyan)" }}>
+                        <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--neon-cyan)', textShadow: '0 0 8px rgba(0, 243, 255, 0.4)', marginBottom: 24, textTransform: 'uppercase', letterSpacing: 2 }}>[ SIMULATION.RESULTS ]</h2>
                         <BacktestStats
                             standard={backtestResult.standard}
                             smart={backtestResult.smart}

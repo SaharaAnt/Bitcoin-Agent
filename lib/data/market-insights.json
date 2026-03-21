@@ -1,0 +1,27 @@
+{
+  "lastUpdated": "2026-03-21T07:45:00Z",
+  "technicalInsights": [
+    {
+      "source": "Glassnode",
+      "metric": "Realized Price & Churn",
+      "insight": "$59k–$72k 筹码区已清空，BTC 进入“低阻力上行通道”。上方砸盘阻力较小。",
+      "reliability": "High"
+    },
+    {
+      "source": "Options Market",
+      "metric": "Negative Gamma Wall",
+      "insight": "$75k 附近存在大量负 Gamma。价格在该点位波动会放大：突破可能快速冲高，下穿可能狠砸。",
+      "reliability": "High",
+      "actionable": "价格接近 $75k 时需警惕剧烈波动"
+    }
+  ],
+  "predictionMarkets": {
+    "platform": "Polymarket",
+    "targets": [
+      { "level": 80000, "probability": 0.76, "timeframe": "2026" },
+      { "level": 90000, "probability": 0.53, "timeframe": "2026" },
+      { "level": 100000, "probability": 0.40, "timeframe": "2026" }
+    ],
+    "sentiment": "Traders are generally bullish for the $80k-$90k range in 2026, with significant bets on $100k+ by 2027."
+  }
+}

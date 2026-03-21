@@ -11,6 +11,7 @@ import type { Frequency } from "../engine/types";
 import etfData from "../data/farside-data.json";
 import { getMvrvData } from "../api/mvrv";
 import { generateBtcRiskReport } from "../engine/risk-report";
+import marketInsights from "../data/market-insights.json";
 
 export const agentTools = {
     runDCABacktest: tool({
@@ -344,6 +345,14 @@ export const agentTools = {
         execute: async (params) => {
             const report = await generateBtcRiskReport(params);
             return report;
+        },
+    }),
+
+    getExpertInsights: tool({
+        description: "获取来自 Glassnode、期权市场 (Gamma) 和预测市场 (Polymarket) 的深度专家见解和技术面分析。",
+        inputSchema: z.object({}),
+        execute: async () => {
+            return marketInsights;
         },
     }),
 };

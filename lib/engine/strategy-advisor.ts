@@ -1,6 +1,7 @@
 import { getBtcCurrentPrice } from "../api/coingecko";
 import { getFearGreedCurrent, getFearGreedHistory } from "../api/fear-greed";
 import { getMvrvData, MvrvData } from "../api/mvrv";
+import marketInsights from "../data/market-insights.json";
 
 export type Signal =
     | "strong_buy"
@@ -157,6 +158,25 @@ function generateSuggestion(
         } else if (mvrv.nupl >= 0 && mvrv.nupl < 0.1) {
             reasoning.push("信心指数已站上零轴，市场进入初步复苏/牛市早期阶段");
         }
+    }
+
+    // 2. Integration of Expert Insights (Glassnode, Gamma, Polymarket)
+    const currentPrice = mvrv?.currentPrice || 0;
+    if (currentPrice > 0) {
+        // Gamma Wall Check
+        marketInsights.technicalInsights.forEach(insight => {
+            if (insight.metric === "Negative Gamma Wall" && insight.insight.includes("$75k")) {
+                const distance = Math.abs(currentPrice - 75000);
+                if (distance < 3000) {
+                    reasoning.push(`注意：价格接近 $75k Gamma 墙，预计波动性将大幅上升，突破即起飞，下穿即狠砸`);
+                }
+            }
+            if (insight.metric === "Realized Price & Churn") {
+                if (currentPrice > 59000 && currentPrice < 72000) {
+                    reasoning.push(`当前处于 $59k–$72k “低阻力上行通道”，上方砸盘压力较小`);
+                }
+            }
+        });
     }
 
     switch (signal) {

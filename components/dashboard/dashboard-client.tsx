@@ -22,6 +22,7 @@ import PriceAlertCard from "@/components/dashboard/price-alert-card";
 import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
 import RiskBriefCard from "@/components/dashboard/risk-brief-card";
+import FansPriceCard from "@/components/dashboard/fans-price-card";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
 
 interface BacktestResult {
@@ -206,7 +207,8 @@ export default function DashboardClient() {
 
                 {/* DATA FEED / Row 4: Deep Dive Analytics */}
                 <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ DATA.FEED ]</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
+                    <FansPriceCard />
                     <MacroLiquidityCard />
                     <UsdtSentimentCard />
                     <EtfFlowCard />

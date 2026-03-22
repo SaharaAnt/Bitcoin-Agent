@@ -1,35 +1,24 @@
 "use client";
 
-import { TrendingUp, Coins, Target, AlertTriangle } from "lucide-react";
+import { TrendingUp, Coins, Target, AlertTriangle, Clock, Droplets, ThumbsUp } from "lucide-react";
+
+interface StratStats {
+    totalInvested: number;
+    totalBTC: number;
+    finalValue: number;
+    roi: number;
+    annualizedReturn: number;
+    maxDrawdown: number;
+    averageCost: number;
+    underwaterDays: number;
+    longestDrawdownDays: number;
+    winRate: number;
+}
 
 interface StatsProps {
-    standard: {
-        totalInvested: number;
-        totalBTC: number;
-        finalValue: number;
-        roi: number;
-        annualizedReturn: number;
-        maxDrawdown: number;
-        averageCost: number;
-    };
-    smart: {
-        totalInvested: number;
-        totalBTC: number;
-        finalValue: number;
-        roi: number;
-        annualizedReturn: number;
-        maxDrawdown: number;
-        averageCost: number;
-    };
-    lumpSum: {
-        totalInvested: number;
-        totalBTC: number;
-        finalValue: number;
-        roi: number;
-        annualizedReturn: number;
-        maxDrawdown: number;
-        averageCost: number;
-    };
+    standard: StratStats;
+    smart: StratStats;
+    lumpSum: StratStats;
 }
 
 function StatCard({
@@ -39,13 +28,15 @@ function StatCard({
     smart,
     lumpSum,
     format = "usd",
+    lowerIsBetter = false,
 }: {
     label: string;
     icon: React.ReactNode;
     standard: number;
     smart: number;
     lumpSum: number;
-    format?: "usd" | "btc" | "percent";
+    format?: "usd" | "btc" | "percent" | "days";
+    lowerIsBetter?: boolean;
 }) {
     const fmt = (v: number) => {
         switch (format) {
@@ -55,6 +46,8 @@ function StatCard({
                 return `${v.toFixed(6)} ₿`;
             case "percent":
                 return `${v.toFixed(2)}%`;
+            case "days":
+                return `${Math.round(v)} 天`;
         }
     };
 
@@ -181,6 +174,34 @@ export default function BacktestStats({
                 smart={smart.averageCost}
                 lumpSum={lumpSum.averageCost}
                 format="usd"
+            />
+
+            {/* ── Tolerance Block ── */}
+            <StatCard
+                label="煎熬岁月 (累计水下天数)"
+                icon={<Droplets size={14} />}
+                standard={standard.underwaterDays}
+                smart={smart.underwaterDays}
+                lumpSum={lumpSum.underwaterDays}
+                format="days"
+                lowerIsBetter
+            />
+            <StatCard
+                label="至暗时刻 (最长连续回撤期)"
+                icon={<Clock size={14} />}
+                standard={standard.longestDrawdownDays}
+                smart={smart.longestDrawdownDays}
+                lumpSum={lumpSum.longestDrawdownDays}
+                format="days"
+                lowerIsBetter
+            />
+            <StatCard
+                label="情绪正反馈 (正收益占比)"
+                icon={<ThumbsUp size={14} />}
+                standard={standard.winRate}
+                smart={smart.winRate}
+                lumpSum={lumpSum.winRate}
+                format="percent"
             />
         </div>
     );

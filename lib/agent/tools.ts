@@ -12,6 +12,7 @@ import etfData from "../data/farside-data.json";
 import { getMvrvData } from "../api/mvrv";
 import { generateBtcRiskReport } from "../engine/risk-report";
 import marketInsights from "../data/market-insights.json";
+import { getMacroLiquidityData } from "../api/macro-liquidity";
 
 export const agentTools = {
     runDCABacktest: tool({
@@ -353,6 +354,14 @@ export const agentTools = {
         inputSchema: z.object({}),
         execute: async () => {
             return marketInsights;
+        },
+    }),
+
+    getMacroLiquidity: tool({
+        description: "获取宏观流动性与筹码博弈数据。主要用于评估市场反弹期间是否存在巨鲸割肉形成的「极端抛压（Capitulation Selling Pressure）」，并与「机构/ETF购买力」进行直观对比。如果在聊天中你需要分析当前上涨（反弹）的买方或卖方力量，或者判断当前筑底环境是否安全，必须调用此工具。",
+        inputSchema: z.object({}),
+        execute: async () => {
+            return await getMacroLiquidityData();
         },
     }),
 };

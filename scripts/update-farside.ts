@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import * as fs from 'fs';
 import * as path from 'path';
+import { extractFarsideData } from '../lib/api/farside-parser';
 
 puppeteer.use(StealthPlugin());
 
@@ -98,40 +99,7 @@ async function scrapeFarside() {
         await new Promise(r => setTimeout(r, 3000));
 
         console.log("[update-farside] Extracting table data...");
-        const result = await page.evaluate(() => {
-            const dataList: any[] = [];
-            const trs = Array.from(document.querySelectorAll('tr'));
-            
-            for (const tr of trs) {
-                const cells = Array.from(tr.querySelectorAll('td')).map((td: any) => td.textContent.trim());
-
-                if (cells.length > 0) {
-                    const dateText = cells[0];
-                    let totalText = cells[cells.length - 1];
-
-                    if (dateText && totalText) {
-                        if (totalText === '-' || totalText === '' || totalText === 'Total') continue;
-
-                        if (totalText.includes('(') && totalText.includes(')')) {
-                            totalText = '-' + totalText.replace(/[()]/g, '');
-                        }
-                        totalText = totalText.replace(/,/g, '');
-
-                        const dateRegex = /\d+\s+\w+\s+\d+/;
-                        const isDate = dateRegex.test(dateText);
-                        const totalNum = parseFloat(totalText);
-
-                        if (isDate && !isNaN(totalNum)) {
-                            dataList.push({
-                                date: dateText,
-                                total: totalNum * 1_000_000,
-                            });
-                        }
-                    }
-                }
-            }
-            return { length: trs.length, data: dataList };
-        });
+        const result = await page.evaluate(extractFarsideData);
 
         console.log(`[update-farside] Scanned ${result.length} rows, found ${result.data.length} valid data points.`);
 

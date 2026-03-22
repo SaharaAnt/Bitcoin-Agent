@@ -32,6 +32,9 @@ interface BacktestResult {
     annualizedReturn: number;
     maxDrawdown: number;
     averageCost: number;
+    underwaterDays: number;
+    longestDrawdownDays: number;
+    winRate: number;
     buys: Array<{
         date: string;
         portfolioValue: number;

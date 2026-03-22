@@ -36,6 +36,10 @@ export interface BacktestResult {
     maxDrawdown: number;
     averageCost: number; // avg USD per BTC
     currentPrice: number;
+    // --- Tolerance Metrics 耐受力指标 ---
+    underwaterDays: number;      // 累计水下天数
+    longestDrawdownDays: number; // 最长回撤期天数
+    winRate: number;             // 正收益占比 %
 }
 
 export interface ComparisonResult {

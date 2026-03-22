@@ -10,6 +10,9 @@ import {
     calcAnnualizedReturn,
     calcMaxDrawdown,
     calcAverageCost,
+    calcUnderwaterDays,
+    calcLongestDrawdownDays,
+    calcWinRate,
 } from "./metrics";
 import { getBtcDailyPrices } from "../api/coingecko";
 import { getFearGreedMap } from "../api/fear-greed";
@@ -106,6 +109,9 @@ export async function runBacktest(config: DCAConfig): Promise<BacktestResult> {
         maxDrawdown: calcMaxDrawdown(buys),
         averageCost: calcAverageCost(totalInvested, totalBTC),
         currentPrice: lastPrice,
+        underwaterDays: calcUnderwaterDays(buys),
+        longestDrawdownDays: calcLongestDrawdownDays(buys),
+        winRate: calcWinRate(buys),
     };
 }
 
@@ -184,6 +190,9 @@ export async function runSmartBacktest(
         maxDrawdown: calcMaxDrawdown(buys),
         averageCost: calcAverageCost(totalInvested, totalBTC),
         currentPrice: lastPrice,
+        underwaterDays: calcUnderwaterDays(buys),
+        longestDrawdownDays: calcLongestDrawdownDays(buys),
+        winRate: calcWinRate(buys),
     };
 }
 
@@ -253,6 +262,9 @@ export async function runLumpSum(config: DCAConfig): Promise<BacktestResult> {
         maxDrawdown: calcMaxDrawdown(buys),
         averageCost: firstPrice,
         currentPrice: lastPrice,
+        underwaterDays: calcUnderwaterDays(buys),
+        longestDrawdownDays: calcLongestDrawdownDays(buys),
+        winRate: calcWinRate(buys),
     };
 }
 

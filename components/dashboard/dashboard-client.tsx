@@ -23,6 +23,7 @@ import TrendsChart from "@/components/dashboard/trends-chart";
 import TradingDiary from "@/components/dashboard/trading-diary";
 import RiskBriefCard from "@/components/dashboard/risk-brief-card";
 import FansPriceCard from "@/components/dashboard/fans-price-card";
+import FansPriceChart from "@/components/dashboard/fans-price-chart";
 import { MacroAnalysis } from "@/lib/engine/macro-advisor";
 
 interface BacktestResult {
@@ -215,8 +216,13 @@ export default function DashboardClient() {
                     <OnchainCard />
                 </div>
 
-                {/* TOOLS & SIMULATION / Row 5: Actionable Tools */}
+                {/* TOOLS & SIMULATION / Row 5: Fans-Price Chart (full width) */}
                 <h2 style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 2 }}>[ SIMULATION.TOOLS ]</h2>
+                <div style={{ marginBottom: 16 }}>
+                    <FansPriceChart />
+                </div>
+
+                {/* Row 5b: Trends + Controls */}
                 <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, marginBottom: 32, alignItems: "stretch" }}>
                     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
                         {macro?.retailSentiment?.timeline && (
